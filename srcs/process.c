@@ -68,8 +68,8 @@ void process_input(char *input, t_shell *shell)
     }
     
     // Debug: print tokens
-	printf("	\033[31mTokens:\033[0m\n\n");
-    print_tokens(tokens);
+	// printf("	\033[31mTokens:\033[0m\n\n");
+    // print_tokens(tokens);
     
     // Parse tokens into pipeline
     pipeline = parse_tokens(tokens);
@@ -81,9 +81,9 @@ void process_input(char *input, t_shell *shell)
     }
     
 	// Debug: print commands
-	printf("	\033[31mCommands:\033[0m\n\n");
-	print_pipeline(pipeline);
-	printf("	\033[31mResult:\033[0m\n\n");
+	// printf("	\033[31mCommands:\033[0m\n\n");
+	// print_pipeline(pipeline);
+	// printf("	\033[31mResult:\033[0m\n\n");
 
     // Execute the pipeline
     int status = execute_pipeline(pipeline, shell);
