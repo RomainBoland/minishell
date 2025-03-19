@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/19 12:55:50 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/19 15:02:31 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -163,9 +163,7 @@ int setup_redirections(t_command *cmd, int in_fd, int out_fd)
 // Execute a single command with redirections
 int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
 {
-    pid_t pid;
     int status;
-    char *exec_path;
     
     // Handle empty command
     if (!cmd || !cmd->args || !cmd->args[0])
@@ -200,74 +198,80 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         
         return status;
     }
-    
-    // Find executable path
-    exec_path = find_executable(cmd->args[0], shell);
-    if (!exec_path)
+    else
     {
-        ft_putstr_fd("minishell: command not found: ", 2);
-        ft_putendl_fd(cmd->args[0], 2);
-        return 127;  // Command not found exit status
-    }
-    
-    // Fork and execute
-    pid = fork();
-    if (pid < 0)
-    {
-        perror("fork");
+        // This will only be called for a single external command
+        // Fork and execute
+        pid_t pid;
+        
+        // Find executable path
+        char *exec_path = find_executable(cmd->args[0], shell);
+        if (!exec_path)
+        {
+            ft_putstr_fd("minishell: command not found: ", 2);
+            ft_putendl_fd(cmd->args[0], 2);
+            return 127;  // Command not found exit status
+        }
+        
+        // Fork and execute
+        pid = fork();
+        if (pid < 0)
+        {
+            perror("fork");
+            free(exec_path);
+            return 1;
+        }
+        
+        if (pid == 0)  // Child process
+        {
+            // Set up signal handlers for child
+            signal(SIGINT, SIG_DFL);    // Default Ctrl+C behavior
+            signal(SIGQUIT, SIG_DFL);   // Default Ctrl+\ behavior
+            
+            // Set up redirections
+            if (!setup_redirections(cmd, in_fd, out_fd))
+            {
+                free(exec_path);
+                exit(1);
+            }
+            
+            // Close unneeded file descriptors
+            if (in_fd != STDIN_FILENO)
+                close(in_fd);
+            if (out_fd != STDOUT_FILENO)
+                close(out_fd);
+            
+            // Convert environment to array for execve
+            char **env_array = env_to_array(shell->env);
+            if (!env_array)
+            {
+                free(exec_path);
+                exit(1);
+            }
+            
+            // Execute command
+            execve(exec_path, cmd->args, env_array);
+            
+            // If execve returns, there was an error
+            perror(exec_path);
+            free(exec_path);
+            free_env_array(env_array);
+            exit(1);
+        }
+        
+        // Parent process
         free(exec_path);
+        
+        // Wait for child to finish
+        waitpid(pid, &status, 0);
+        
+        if (WIFEXITED(status))
+            return WEXITSTATUS(status);
+        else if (WIFSIGNALED(status))
+            return 128 + WTERMSIG(status);
+        
         return 1;
     }
-    
-    if (pid == 0)  // Child process
-    {
-        // Set up signal handlers for child
-        signal(SIGINT, SIG_DFL);    // Default Ctrl+C behavior
-        signal(SIGQUIT, SIG_DFL);   // Default Ctrl+\ behavior
-        
-        // Set up redirections
-        if (!setup_redirections(cmd, in_fd, out_fd))
-            exit(1);
-        
-        // Close unneeded file descriptors
-        if (in_fd != STDIN_FILENO)
-            close(in_fd);
-        if (out_fd != STDOUT_FILENO)
-            close(out_fd);
-        
-        // Convert environment to array for execve
-        char **env_array = env_to_array(shell->env);
-        if (!env_array)
-            exit(1);
-        
-        // Execute command
-        execve(exec_path, cmd->args, env_array);
-        
-        // If execve returns, there was an error
-        perror(exec_path);
-        free(exec_path);
-        free_env_array(env_array);
-        exit(1);
-    }
-    
-    // Parent process
-    free(exec_path);
-    
-    // Close pipe file descriptors in parent
-    if (in_fd != STDIN_FILENO)
-        close(in_fd);
-    if (out_fd != STDOUT_FILENO)
-        close(out_fd);
-    
-    // Wait for child to finish
-    waitpid(pid, &status, 0);
-    
-    if (WIFEXITED(status))
-        return WEXITSTATUS(status);
-    else if (WIFSIGNALED(status))
-        return 128 + WTERMSIG(status);
-    
-    return 1;
 }
 
 // Execute a pipeline of commands
@@ -275,45 +279,195 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
 {
     int i;
     int in_fd;
-    int pipefds[2];
+    int pipefds[2][2];  // Two sets of pipe file descriptors for alternating
+    int active_pipe = 0;  // Track which pipe set is active
     int exit_status = 0;
+    pid_t *pids;  // Array to store all process IDs
     
     if (!pipeline || pipeline->cmd_count == 0)
+        return 1;
+    
+    // Special case: Single built-in command without pipes
+    if (pipeline->cmd_count == 1 && pipeline->commands[0]->args && 
+        is_builtin(pipeline->commands[0]->args[0]))
+    {
+        // For built-ins, execute directly in the current process
+        return execute_command(pipeline->commands[0], STDIN_FILENO, STDOUT_FILENO, shell);
+    }
+    
+    // Allocate memory for process IDs
+    pids = malloc(sizeof(pid_t) * pipeline->cmd_count);
+    if (!pids)
         return 1;
     
     // Start with standard input
     in_fd = STDIN_FILENO;
     
-    // Process all commands in the pipeline
-    for (i = 0; i < pipeline->cmd_count; i++)
+    // Create initial pipes if needed
+    if (pipeline->cmd_count > 1)
     {
-        // Last command
-        if (i == pipeline->cmd_count - 1)
+        if (pipe(pipefds[active_pipe]) < 0)
         {
-            // Execute with current input and standard output
-            exit_status = execute_command(pipeline->commands[i], in_fd, STDOUT_FILENO, shell);
-        }
-        else
-        {
-            // Create pipe for the next command
-            if (pipe(pipefds) < 0)
-            {
-                perror("pipe");
-                return 1;
-            }
-            
-            // Execute with current input and pipe output
-            exit_status = execute_command(pipeline->commands[i], in_fd, pipefds[1], shell);
-            
-            // Close write end of pipe
-            close(pipefds[1]);
-            
-            // Update input for next command
-            if (in_fd != STDIN_FILENO)
-                close(in_fd);
-            in_fd = pipefds[0];
+            perror("pipe");
+            free(pids);
+            return 1;
         }
     }
     
+    // Process all commands in the pipeline
+    for (i = 0; i < pipeline->cmd_count; i++)
+    {
+        int out_fd;
+        
+        // Determine output file descriptor
+        if (i == pipeline->cmd_count - 1)
+        {
+            // Last command outputs to stdout
+            out_fd = STDOUT_FILENO;
+        }
+        else
+        {
+            // Not the last command, output to pipe
+            out_fd = pipefds[active_pipe][1];
+            
+            // Create pipe for the next command if not the second-to-last command
+            if (i < pipeline->cmd_count - 2)
+            {
+                if (pipe(pipefds[1 - active_pipe]) < 0)
+                {
+                    perror("pipe");
+                    free(pids);
+                    return 1;
+                }
+            }
+        }
+        
+        // Execute the command
+        pid_t pid = fork();
+        if (pid < 0)
+        {
+            perror("fork");
+            free(pids);
+            return 1;
+        }
+        
+        if (pid == 0)  // Child process
+        {
+            // Child doesn't need to keep track of pids
+            free(pids);
+            
+            // Set up signal handlers for child
+            signal(SIGINT, SIG_DFL);    // Default Ctrl+C behavior
+            signal(SIGQUIT, SIG_DFL);   // Default Ctrl+\ behavior
+            
+            // If not first command, set input from previous pipe
+            if (i > 0)
+            {
+                dup2(in_fd, STDIN_FILENO);
+                close(in_fd);
+            }
+            
+            // If not last command, set output to next pipe
+            if (i < pipeline->cmd_count - 1)
+            {
+                dup2(out_fd, STDOUT_FILENO);
+                close(pipefds[active_pipe][0]);
+                close(pipefds[active_pipe][1]);
+                
+                // Close the other set of pipes if they exist
+                if (i < pipeline->cmd_count - 2)
+                {
+                    close(pipefds[1 - active_pipe][0]);
+                    close(pipefds[1 - active_pipe][1]);
+                }
+            }
+            
+            // Execute command
+            if (is_builtin(pipeline->commands[i]->args[0]))
+            {
+                // For built-ins in a pipeline, we still need to exit with the correct status
+                exit(execute_builtin(pipeline->commands[i], shell));
+            }
+            else
+            {
+                // For external commands
+                char *exec_path = find_executable(pipeline->commands[i]->args[0], shell);
+                if (!exec_path)
+                {
+                    ft_putstr_fd("minishell: command not found: ", 2);
+                    ft_putendl_fd(pipeline->commands[i]->args[0], 2);
+                    exit(127);  // Command not found exit status
+                }
+                
+                // Set up redirections for the command
+                if (!setup_redirections(pipeline->commands[i], STDIN_FILENO, STDOUT_FILENO))
+                {
+                    free(exec_path);
+                    exit(1);
+                }
+                
+                // Convert environment to array for execve
+                char **env_array = env_to_array(shell->env);
+                if (!env_array)
+                {
+                    free(exec_path);
+                    exit(1);
+                }
+                
+                // Execute command
+                execve(exec_path, pipeline->commands[i]->args, env_array);
+                
+                // If execve returns, there was an error
+                perror(exec_path);
+                free(exec_path);
+                free_env_array(env_array);
+                exit(1);
+            }
+        }
+        
+        // Parent process
+        pids[i] = pid;
+        
+        // Close pipe ends that are no longer needed
+        if (i > 0)
+            close(in_fd);
+            
+        if (i < pipeline->cmd_count - 1)
+            close(pipefds[active_pipe][1]);  // Close write end after it's been duplicated
+        
+        // Update input for next command
+        if (i < pipeline->cmd_count - 1)
+        {
+            in_fd = pipefds[active_pipe][0];
+            active_pipe = 1 - active_pipe;  // Swap to the other pipe set
+        }
+    }
+    
+    // Close any remaining pipe file descriptors
+    if (pipeline->cmd_count > 1)
+    {
+        if (in_fd != STDIN_FILENO)
+            close(in_fd);
+    }
+    
+    // Wait for all processes to complete, starting from the last
+    for (i = pipeline->cmd_count - 1; i >= 0; i--)
+    {
+        int status;
+        waitpid(pids[i], &status, 0);
+        
+        // Get the exit status of the last command in the pipeline
+        if (i == pipeline->cmd_count - 1)
+        {
+            if (WIFEXITED(status))
+                exit_status = WEXITSTATUS(status);
+            else if (WIFSIGNALED(status))
+                exit_status = 128 + WTERMSIG(status);
+            else
+                exit_status = 1;
+        }
+    }
+    
+    free(pids);
     return exit_status;
 }
