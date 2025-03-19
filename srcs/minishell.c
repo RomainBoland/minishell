@@ -91,7 +91,8 @@ int main(void)
     
     // Set up signal handling
     setup_signals();
-    
+
+    printf("\033[33m  Bienvenue dans minishell\033[33m\n");
     while (1)
     {
         // Reset signal flag
