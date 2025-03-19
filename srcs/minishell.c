@@ -79,20 +79,31 @@ char *get_prompt(void)
         return ft_strdup("minishell$ ");
     
     // Format: "\033[1;36musername@hostname:directory$\033[0m "
+    // Using snprintf instead of ft_sprintf
     sprintf(prompt, "\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);
     
     return prompt;
 }
 
-int main(void)
+int main(int argc, char **argv, char **envp)
 {
     char *input;
     char *prompt;
+    t_shell shell;
+    
+    (void)argc;
+    (void)argv;
+    
+    // Initialize shell structure
+    shell.env = init_env(envp);
+    shell.last_exit_status = 0;
     
     // Set up signal handling
     setup_signals();
 
-    printf("\033[33m  Bienvenue dans minishell\033[33m\n");
+	printf("	\033[33mBienvenue dans minishell\033[33m\n");
+
+    
     while (1)
     {
         // Reset signal flag
@@ -119,15 +130,16 @@ int main(void)
             add_history(input);
             
             // Process input
-            process_input(input);
+            process_input(input, &shell);
         }
         
         free(prompt);
         free(input);
     }
     
-    // Clean up history
+    // Clean up
     rl_clear_history();
+    free_env(shell.env);
     
-    return 0;
+    return shell.last_exit_status;
 }

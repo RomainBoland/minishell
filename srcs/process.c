@@ -54,7 +54,7 @@ void print_pipeline(t_pipeline *pipeline)
 }
 
 // Process the input line
-void process_input(char *input)
+void process_input(char *input, t_shell *shell)
 {
     t_token *tokens;
     t_pipeline *pipeline;
@@ -68,7 +68,8 @@ void process_input(char *input)
     }
     
     // Debug: print tokens
-    // print_tokens(tokens);
+	printf("	\033[31mTokens:\033[0m\n\n");
+    print_tokens(tokens);
     
     // Parse tokens into pipeline
     pipeline = parse_tokens(tokens);
@@ -79,15 +80,17 @@ void process_input(char *input)
         return;
     }
     
-    // Debug: print pipeline
-    // print_pipeline(pipeline);
+	// Debug: print commands
+	printf("	\033[31mCommands:\033[0m\n\n");
+	print_pipeline(pipeline);
+	printf("	\033[31mResult:\033[0m\n\n");
+
+    // Execute the pipeline
+    int status = execute_pipeline(pipeline, shell);
     
-    // Execute pipeline (this will be implemented later)
-    // execute_pipeline(pipeline);
-    
-    // For now, just print the pipeline for debugging
-    print_pipeline(pipeline);
-    
+    // Update the $? variable
+    shell->last_exit_status = status;
+        
     // Clean up
     free_tokens(tokens);
     free_pipeline(pipeline);

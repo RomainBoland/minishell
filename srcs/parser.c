@@ -79,9 +79,12 @@ void add_arg(t_command *cmd, char *arg)
 // Parse tokens into a pipeline of commands
 t_pipeline *parse_tokens(t_token *tokens)
 {
-    t_pipeline *pipeline;
-    t_token *current = tokens;
-    int cmd_index = 0;
+    t_pipeline  *pipeline;
+    t_token     *current;
+    int         cmd_index;
+
+    current = tokens;
+    cmd_index = 0;
     
     // Create pipeline structure
     pipeline = malloc(sizeof(t_pipeline));
