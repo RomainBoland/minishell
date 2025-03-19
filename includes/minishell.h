@@ -16,6 +16,7 @@
 # include <stdio.h>
 # include <stdlib.h>
 # include <unistd.h>
+# include <string.h>
 # include <signal.h>
 # include <sys/wait.h>
 # include <sys/stat.h>
@@ -35,35 +36,56 @@
 # define TOKEN_APPEND    4  // >>
 # define TOKEN_HEREDOC   5  // <<
 
-// Global signal variable
+// Global signal variable - this is the only global we're allowed to use
 extern volatile sig_atomic_t g_signal;
 
+// Forward declarations
+typedef struct s_token t_token;
+typedef struct s_command t_command;
+typedef struct s_pipeline t_pipeline;
+typedef struct s_env t_env;
+typedef struct s_shell t_shell;
+
 // Structures
-typedef struct s_token
+struct s_token
 {
     char            *value;
     int             type;
     struct s_token  *next;
-} t_token;
+};
 
-typedef struct s_command
+struct s_command
 {
     char    **args;          // Command and its arguments
     char    *input_file;     // Input redirection
     char    *output_file;    // Output redirection
     int     append_output;   // Flag for >> redirection
     char    *heredoc_delim;  // Delimiter for heredoc
-} t_command;
+};
 
-typedef struct s_pipeline
+struct s_pipeline
 {
     t_command   **commands;  // Array of commands
     int         cmd_count;   // Number of commands
-} t_pipeline;
+};
+
+struct s_env
+{
+    char            *key;
+    char            *value;
+    struct s_env    *next;
+};
+
+struct s_shell
+{
+    t_env   *env;            // Environment variables
+    int     last_exit_status; // Exit status of last command
+};
 
 // Main functions
-void    process_input(char *input);
+void    process_input(char *input, t_shell *shell);
 void    signal_handler(int signum);
+void    setup_signals(void);
 
 // Parsing functions
 t_token *tokenize_input(char *input);
@@ -72,19 +94,29 @@ t_pipeline *parse_tokens(t_token *tokens);
 void    free_pipeline(t_pipeline *pipeline);
 
 // Execution functions
-int     execute_pipeline(t_pipeline *pipeline);
-int     execute_command(t_command *cmd, int in_fd, int out_fd);
-int     execute_builtin(t_command *cmd);
+int     execute_pipeline(t_pipeline *pipeline, t_shell *shell);
+int     execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell);
+int     execute_builtin(t_command *cmd, t_shell *shell);
 int     is_builtin(char *cmd);
 
 // Built-ins
 int     ft_echo(t_command *cmd);
-int     ft_cd(t_command *cmd);
+int     ft_cd(t_command *cmd, t_shell *shell);
 int     ft_pwd(void);
-int     ft_export(t_command *cmd);
-int     ft_unset(t_command *cmd);
-int     ft_env(void);
-int     ft_exit(t_command *cmd);
+int     ft_export(t_command *cmd, t_shell *shell);
+int     ft_unset(t_command *cmd, t_shell *shell);
+int     ft_env(t_shell *shell);
+int     ft_exit(t_command *cmd, t_shell *shell);
+
+// Environment functions
+t_env   *init_env(char **envp);
+void    free_env(t_env *env);
+char    *get_env_value(t_env *env, char *key);
+void    set_env_value(t_env *env, char *key, char *value);
+void    remove_env_var(t_env *env, char *key);
+char    **env_to_array(t_env *env);
+void    free_env_array(char **env_array);
+t_env   *create_env_node(char *key, char *value);
 
 // Utils
 char    *get_prompt(void);

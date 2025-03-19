@@ -9,7 +9,14 @@ INC_DIR = includes
 OBJ_DIR = objs
 LIBFT_DIR = libft
 
-SRCS = $(wildcard $(SRC_DIR)/*.c)
+SRCS = $(SRC_DIR)/minishell.c \
+       $(SRC_DIR)/tokenizer.c \
+       $(SRC_DIR)/parser.c \
+       $(SRC_DIR)/process.c \
+       $(SRC_DIR)/execute.c \
+       $(SRC_DIR)/builtin.c \
+	   $(SRC_DIR)/environment.c
+
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIBFT = $(LIBFT_DIR)/libft.a
 
