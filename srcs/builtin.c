@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/19 12:56:02 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/19 13:29:46 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ int ft_echo(t_command *cmd)
     if (!cmd || !cmd->args)
         return 1;
     
-    // Check for -n option
+    // Check for -n option (check how many n / )
     i = 1;
     n_flag = 0;
     while (cmd->args[i] && ft_strncmp(cmd->args[i], "-n", 3) == 0)
