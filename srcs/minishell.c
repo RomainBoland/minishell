@@ -78,10 +78,9 @@ char *get_prompt(void)
     if (!prompt)
         return ft_strdup("minishell$ ");
     
-    // Format: "\033[1;36musername@hostname:directory$\033[0m "
-    // Using snprintf instead of ft_sprintf
     sprintf(prompt, "\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);
-    
+	// printf("\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);
+
     return prompt;
 }
 

@@ -120,7 +120,7 @@ t_env   *create_env_node(char *key, char *value);
 
 // Utils
 char    *get_prompt(void);
-char    **split_args(char *str);
-void    free_split(char **split);
+// char    **split_args(char *str);
+// void    free_split(char **split);
 
 #endif
