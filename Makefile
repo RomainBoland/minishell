@@ -15,7 +15,9 @@ SRCS = $(SRC_DIR)/minishell.c \
        $(SRC_DIR)/process.c \
        $(SRC_DIR)/execute.c \
        $(SRC_DIR)/builtin.c \
-	   $(SRC_DIR)/environment.c
+	   $(SRC_DIR)/environment.c \
+	   $(SRC_DIR)/expand.c	\
+	   $(SRC_DIR)/utils.c
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIBFT = $(LIBFT_DIR)/libft.a

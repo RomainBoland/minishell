@@ -3,14 +3,49 @@
 /*                                                        :::      ::::::::   */
 /*   execute.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/19 15:02:31 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/24 15:22:55 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minishell.h"
+
+// int setup_heredoc(t_command *cmd)
+// {
+//     int     pipe_fd[2];
+//     char    *line;
+    
+//     if (!cmd->heredoc_delim)
+//         return STDIN_FILENO;
+        
+//     if (pipe(pipe_fd) < 0)
+//     {
+//         perror("pipe");
+//         return -1;
+//     }
+    
+//     // Read lines until delimiter is found
+//     while (1)
+//     {
+//         line = readline("> ");  // Prompt for heredoc input
+        
+//         if (!line || ft_strcmp(line, cmd->heredoc_delim) == 0)
+//         {
+//             free(line);
+//             break;
+//         }
+        
+//         // Write to pipe and add newline
+//         write(pipe_fd[1], line, ft_strlen(line));
+//         write(pipe_fd[1], "\n", 1);
+//         free(line);
+//     }
+    
+//     close(pipe_fd[1]);
+//     return pipe_fd[0];  // Return read end of pipe
+// }
 
 // Check if command is a built-in
 int is_builtin(char *cmd)
