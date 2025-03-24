@@ -59,30 +59,19 @@ char *get_prompt(void)
     char hostname[256];
     char cwd[PATH_MAX];
     char *prompt;
-    
-    // Get username from environment
+
     username = getenv("USER");
     if (!username)
         username = "user";
-    
-    // Get hostname
     if (gethostname(hostname, sizeof(hostname)) != 0)
         ft_strlcpy(hostname, "localhost", sizeof(hostname));
-    
-    // Get current directory
     if (getcwd(cwd, sizeof(cwd)) == NULL)
         ft_strlcpy(cwd, "~", sizeof(cwd));
-    
-    // Allocate space for the prompt (with color codes)
     prompt = malloc(ft_strlen(username) + ft_strlen(hostname) + ft_strlen(cwd) + 50);
     if (!prompt)
-        return ft_strdup("minishell$ ");
-    
-    // Format: "\033[1;36musername@hostname:directory$\033[0m "
-    // Using snprintf instead of ft_sprintf
-    sprintf(prompt, "\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);
-    
-    return prompt;
+        return (ft_strdup("minishell$ "));
+    sprintf(prompt, "\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);  
+    return (prompt);
 }
 
 int main(int argc, char **argv, char **envp)
@@ -94,52 +83,30 @@ int main(int argc, char **argv, char **envp)
     (void)argc;
     (void)argv;
     
-    // Initialize shell structure
     shell.env = init_env(envp);
     shell.last_exit_status = 0;
-    
-    // Set up signal handling
     setup_signals();
-
 	printf("	\033[33mBienvenue dans minishell\033[33m\n");
-
-    
     while (1)
     {
-        // Reset signal flag
         g_signal = 0;
-        
-        // Get custom prompt
         prompt = get_prompt();
-        
-        // Read input
         input = readline(prompt);
-        
-        // Handle EOF (Ctrl+D)
         if (!input)
         {
             write(STDOUT_FILENO, "exit\n", 5);
             free(prompt);
             break;
         }
-        
-        // Skip empty lines
         if (input[0] != '\0')
         {
-            // Add to history
             add_history(input);
-            
-            // Process input
             process_input(input, &shell);
         }
-        
         free(prompt);
         free(input);
     }
-    
-    // Clean up
     rl_clear_history();
     free_env(shell.env);
-    
-    return shell.last_exit_status;
+    return (shell.last_exit_status);
 }
