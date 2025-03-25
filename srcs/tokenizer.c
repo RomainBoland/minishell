@@ -12,7 +12,7 @@
 
 #include "../includes/minishell.h"
 
-// Create a new token
+// Create a new token with quote state
 t_token *new_token(char *value, int type, int quoted_state)
 {
     t_token *token;
@@ -77,31 +77,43 @@ char *extract_quoted_str(char *input, int *i, char quote_char)
     return result;
 }
 
-// Extract a word token
+// Extract a word token with proper quote handling
 char *extract_word(char *input, int *i)
 {
     int start = *i;
     int end = start;
+    int in_single_quotes = 0;
+    int in_double_quotes = 0;
     
-    // Find end of word (space or special character)
-    while (input[end] && !ft_strchr(" \t\n|<>", input[end]))
+    // Find end of word (space or special character outside quotes)
+    while (input[end])
     {
-        if (input[end] == '\'' || input[end] == '\"')
+        // Handle quotes
+        if (input[end] == '\'' && !in_double_quotes)
         {
-            char quote = input[end];
-            end++; // Skip opening quote
-            while (input[end] && input[end] != quote)
-                end++;
-            if (input[end])
-                end++; // Skip closing quote
-        }
-        else
+            in_single_quotes = !in_single_quotes;
             end++;
+            continue;
+        }
+        else if (input[end] == '\"' && !in_double_quotes)
+        {
+            in_double_quotes = !in_double_quotes;
+            end++;
+            continue;
+        }
+        
+        // Stop at unquoted spaces or special chars
+        if (!in_single_quotes && !in_double_quotes && 
+            ft_strchr(" \t\n|<>", input[end]))
+            break;
+            
+        end++;
     }
     
+    // If we ended with unclosed quotes, it's still a valid token
     *i = end;
     
-    // Extract the word
+    // Extract the word with quotes preserved
     char *result = malloc(end - start + 1);
     if (!result)
         return NULL;
@@ -124,24 +136,6 @@ t_token *tokenize_input(char *input)
         if (input[i] == ' ' || input[i] == '\t')
         {
             i++;
-            continue;
-        }
-        
-        // Handle single quotes
-        if (input[i] == '\'')
-        {
-            token_value = extract_quoted_str(input, &i, input[i]);
-            add_token(&tokens, new_token(token_value, TOKEN_WORD, 1));
-            free(token_value);
-            continue;
-        }
-
-        // Handle double quotes
-        if (input[i] == '\"')
-        {
-            token_value = extract_quoted_str(input, &i, input[i]);
-            add_token(&tokens, new_token(token_value, TOKEN_WORD, 2));
-            free(token_value);
             continue;
         }
         
@@ -185,9 +179,9 @@ t_token *tokenize_input(char *input)
             continue;
         }
         
-        // Handle normal words
+        // Handle normal words (including quoted strings)
         token_value = extract_word(input, &i);
-        add_token(&tokens, new_token(token_value, TOKEN_WORD, 0));
+        add_token(&tokens, new_token(token_value, TOKEN_WORD, 0)); // We'll handle quotes in expand_variables
         free(token_value);
     }
     

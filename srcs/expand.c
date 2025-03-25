@@ -90,74 +90,97 @@ static char	*expand_single_var(char *str, int *i, t_shell *shell)
 }
 
 // Expand all environment variables in a string
-char	*expand_variables(char *str, t_shell *shell)
+char *expand_variables(char *str, t_shell *shell)
 {
-	int	i;
-	int	j;
-	char	*result;
-	char	*temp;
-	char	*var_value;
-	char	*quoted;
+    int i = 0;
+    char *result;
+    char *temp;
+    char *var_value;
 
-	i = 0;
-	result = NULL;
-
-	// Initialize result as empty string
-	result = ft_strdup("");
-	if (!result)
-		return (NULL);
-	
-	// Process the string
-	while (str[i])
-	{
-		if (str[i] == '$' && str[i + 1] != ' ' && str[i + 1] != '"' && str[i + 1] != '\'')
-		{
-			// Save start position
-			j = i;
-
-			// Expand the variable
-			var_value = expand_single_var(str, &i, shell);
-
-			// Append everything before the variable and the expanded value
-
-			temp = result;
-			result = ft_strjoin(result, var_value);
-			free(temp);
-			free(var_value);
-
-			if (!result)
-				return (NULL);
-		}
-		else if (str[i] == '\'' && !is_in_dquotes(str, i))
-		{
-			// Skip single quoted content (no expansion inside single quote)
-			i++;
-			j = i;
-			while (str[i] && str[i] != '\'')
-				i++;
-			
-			// Append the quoted content as is
-			quoted = ft_substr(str, j, i - j);
-			temp = result;
-			result = ft_strjoin(result, quoted);
-			free(temp);
-			free(quoted);
-
-			if (str[i])
-				i++;
-		}
-		else
-		{
-			// Append regular character
-			char c[2] = {str[i], '\0'};
-			temp = result;
-			result = ft_strjoin(result, c);
-			free(temp);
-			i++;
-		}
-	}
-
-	return (result);
+	//printf("%s\n", str);
+    
+    // Initialize result as empty string
+    result = ft_strdup("");
+    if (!result)
+        return NULL;
+    
+    // Process the string with quote removal
+    while (str[i])
+    {
+        // Single quotes - everything inside is literal, but remove the quotes
+        if (str[i] == '\'')
+        {
+            i++; // Skip the opening quote
+            
+            // Copy everything inside the single quotes literally
+            while (str[i] && str[i] != '\'')
+            {
+                char c[2] = {str[i], '\0'};
+                temp = result;
+                result = ft_strjoin(result, c);
+                free(temp);
+                i++;
+            }
+            
+            if (str[i] == '\'')
+                i++; // Skip the closing quote
+        }
+        // Double quotes - expand variables inside, but remove the quotes
+        else if (str[i] == '\"')
+        {
+            i++; // Skip the opening quote
+            
+            // Process content inside double quotes
+            while (str[i] && str[i] != '\"')
+            {
+                // Expand variables inside double quotes
+                if (str[i] == '$' && str[i+1] && 
+                    (ft_isalnum(str[i+1]) || str[i+1] == '_' || str[i+1] == '?'))
+                {
+                    var_value = expand_single_var(str, &i, shell);
+                    
+                    temp = result;
+                    result = ft_strjoin(result, var_value);
+                    free(temp);
+                    free(var_value);
+                }
+                else
+                {
+                    // Regular character inside double quotes
+                    char c[2] = {str[i], '\0'};
+                    temp = result;
+                    result = ft_strjoin(result, c);
+                    free(temp);
+                    i++;
+                }
+            }
+            
+            if (str[i] == '\"')
+                i++; // Skip the closing quote
+        }
+        // Handle variable expansion outside quotes
+        else if (str[i] == '$' && str[i+1] && 
+                 (ft_isalnum(str[i+1]) || str[i+1] == '_' || str[i+1] == '?'))
+        {
+            var_value = expand_single_var(str, &i, shell);
+            
+            temp = result;
+            result = ft_strjoin(result, var_value);
+            free(temp);
+            free(var_value);
+        }
+        else
+        {
+            // Regular character outside quotes
+            char c[2] = {str[i], '\0'};
+            temp = result;
+            result = ft_strjoin(result, c);
+            free(temp);
+            i++;
+        }
+    }
+    
+    return result;
 }
 
 // Check if a position in a string is inside double quotes
@@ -239,17 +262,37 @@ void	expand_command_args(t_command *cmd, t_shell *shell)
 }
 
 // Expand variables in a pipeline of commands
-void	expand_pipeline(t_pipeline *pipeline, t_shell *shell)
+void expand_pipeline(t_pipeline *pipeline, t_shell *shell)
 {
-	int	i;
-
-	i = 0;
-	if (!pipeline)
-		return ;
-
-	while (i < pipeline->cmd_count)
-	{
-		expand_command_args(pipeline->commands[i], shell);
-		i++;
-	}
+    int i, j;
+    char *expanded;
+    
+    if (!pipeline)
+        return;
+    
+    for (i = 0; i < pipeline->cmd_count; i++)
+    {
+        // Expand command arguments
+        for (j = 0; pipeline->commands[i]->args && pipeline->commands[i]->args[j]; j++)
+        {
+            expanded = expand_variables(pipeline->commands[i]->args[j], shell);
+            if (expanded)
+            {
+                free(pipeline->commands[i]->args[j]);
+                pipeline->commands[i]->args[j] = expanded;
+            }
+        }
+        
+        // Expand redirection filenames
+        if (pipeline->commands[i]->input_file)
+        {
+            expanded = expand_variables(pipeline->commands[i]->input_file, shell);
+            if (expanded)
+            {
+                free(pipeline->commands[i]->input_file);
+                pipeline->commands[i]->input_file = expanded;
+            }
+        }
+        // ... Similar code for other redirections
+    }
 }
