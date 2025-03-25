@@ -51,12 +51,14 @@ struct s_token
 {
     char            *value;
     int             type;
+    int             quoted_state; // 0 = unquoted, 1 = single quoted, 2 = double quoted
     struct s_token  *next;
 };
 
 struct s_command
 {
     char    **args;          // Command and its arguments
+    int     *arg_quoted;     // Array tracking quote state for each arg
     char    *input_file;     // Input redirection
     char    *output_file;    // Output redirection
     int     append_output;   // Flag for >> redirection

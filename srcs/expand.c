@@ -191,13 +191,21 @@ void	expand_command_args(t_command *cmd, t_shell *shell)
 	i = 0;
 	while  (cmd->args[i])
 	{
-		expanded = expand_variables(cmd->args[i], shell);
-		if (expanded)
-		{
-			free(cmd->args[i]);
-			cmd->args[i] = expanded;
-		}
-		i++;
+		 // Skip expansion for single-quoted strings
+        if (cmd->arg_quoted[i] == 1) // 1 = single quoted
+        {
+            i++;
+            continue;
+        }
+        
+        // For double-quoted or unquoted, expand variables
+        expanded = expand_variables(cmd->args[i], shell);
+        if (expanded)
+        {
+            free(cmd->args[i]);
+            cmd->args[i] = expanded;
+        }
+        i++;
 	}
 
 	// also expand redirection filenames

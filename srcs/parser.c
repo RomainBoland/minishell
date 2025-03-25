@@ -46,10 +46,15 @@ t_command *create_command(void)
 }
 
 // Add word to command arguments
-void add_arg(t_command *cmd, char *arg)
+void add_arg(t_command *cmd, char *arg, int quoted_state)
 {
-    int i = 0;
+    int i;
+    int j;
     char **new_args;
+    int *new_arg_quoted;
+
+    i = 0;
+    j = 0;
     
     // Count current args
     if (cmd->args)
@@ -60,20 +65,29 @@ void add_arg(t_command *cmd, char *arg)
     
     // Allocate new array with one more slot
     new_args = malloc(sizeof(char *) * (i + 2));
+    new_arg_quoted = malloc(sizeof(int) * (i + 2));
     if (!new_args)
         return;
         
     // Copy existing args
-    for (int j = 0; j < i; j++)
+    while (j < i)
+    {
         new_args[j] = cmd->args[j];
+        new_arg_quoted[j] = cmd->arg_quoted[j];
+        j++;
+    }
         
     // Add new arg
     new_args[i] = ft_strdup(arg);
+    new_arg_quoted[i] = quoted_state;
     new_args[i + 1] = NULL;
+    new_arg_quoted[i + 1] = 0;
     
     // Free old array but not the strings
     free(cmd->args);
+    free(cmd->arg_quoted);
     cmd->args = new_args;
+    cmd->arg_quoted = new_arg_quoted;
 }
 
 // Parse tokens into a pipeline of commands
@@ -149,7 +163,7 @@ t_pipeline *parse_tokens(t_token *tokens)
         // Handle normal words (command and arguments)
         if (current->type == TOKEN_WORD)
         {
-            add_arg(pipeline->commands[cmd_index], current->value);
+            add_arg(pipeline->commands[cmd_index], current->value, current->quoted_state);
             current = current->next;
             continue;
         }

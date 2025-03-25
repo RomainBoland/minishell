@@ -13,7 +13,7 @@
 #include "../includes/minishell.h"
 
 // Create a new token
-t_token *new_token(char *value, int type)
+t_token *new_token(char *value, int type, int quoted_state)
 {
     t_token *token;
     
@@ -23,6 +23,7 @@ t_token *new_token(char *value, int type)
         
     token->value = ft_strdup(value);
     token->type = type;
+    token->quoted_state = quoted_state;
     token->next = NULL;
     
     return token;
@@ -126,11 +127,20 @@ t_token *tokenize_input(char *input)
             continue;
         }
         
-        // Handle quotes
-        if (input[i] == '\'' || input[i] == '\"')
+        // Handle single quotes
+        if (input[i] == '\'')
         {
             token_value = extract_quoted_str(input, &i, input[i]);
-            add_token(&tokens, new_token(token_value, TOKEN_WORD));
+            add_token(&tokens, new_token(token_value, TOKEN_WORD, 1));
+            free(token_value);
+            continue;
+        }
+
+        // Handle double quotes
+        if (input[i] == '\"')
+        {
+            token_value = extract_quoted_str(input, &i, input[i]);
+            add_token(&tokens, new_token(token_value, TOKEN_WORD, 2));
             free(token_value);
             continue;
         }
@@ -138,7 +148,7 @@ t_token *tokenize_input(char *input)
         // Handle pipe
         if (input[i] == '|')
         {
-            add_token(&tokens, new_token("|", TOKEN_PIPE));
+            add_token(&tokens, new_token("|", TOKEN_PIPE, 0));
             i++;
             continue;
         }
@@ -148,12 +158,12 @@ t_token *tokenize_input(char *input)
         {
             if (input[i + 1] == '<')
             {
-                add_token(&tokens, new_token("<<", TOKEN_HEREDOC));
+                add_token(&tokens, new_token("<<", TOKEN_HEREDOC, 0));
                 i += 2;
             }
             else
             {
-                add_token(&tokens, new_token("<", TOKEN_REDIR_IN));
+                add_token(&tokens, new_token("<", TOKEN_REDIR_IN, 0));
                 i++;
             }
             continue;
@@ -164,12 +174,12 @@ t_token *tokenize_input(char *input)
         {
             if (input[i + 1] == '>')
             {
-                add_token(&tokens, new_token(">>", TOKEN_APPEND));
+                add_token(&tokens, new_token(">>", TOKEN_APPEND, 0));
                 i += 2;
             }
             else
             {
-                add_token(&tokens, new_token(">", TOKEN_REDIR_OUT));
+                add_token(&tokens, new_token(">", TOKEN_REDIR_OUT, 0));
                 i++;
             }
             continue;
@@ -177,7 +187,7 @@ t_token *tokenize_input(char *input)
         
         // Handle normal words
         token_value = extract_word(input, &i);
-        add_token(&tokens, new_token(token_value, TOKEN_WORD));
+        add_token(&tokens, new_token(token_value, TOKEN_WORD, 0));
         free(token_value);
     }
     

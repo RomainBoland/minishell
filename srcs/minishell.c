@@ -15,6 +15,7 @@
 volatile sig_atomic_t g_signal = 0;
 
 // Signal handler for interactive mode
+// CHECK DOUBLE PRINT WHEN INTERACTIVE MODE CTRL+C (cat ou <<) !!!!!!!!!!!!
 void signal_handler(int signum)
 {
     g_signal = signum;
