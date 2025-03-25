@@ -83,44 +83,51 @@ struct s_shell
 };
 
 // Main functions
-void    process_input(char *input, t_shell *shell);
-void    signal_handler(int signum);
-void    setup_signals(void);
+void    	process_input(char *input, t_shell *shell);
+void    	signal_handler(int signum);
+void    	setup_signals(void);
 
 // Parsing functions
-t_token *tokenize_input(char *input);
-void    free_tokens(t_token *tokens);
+t_token 	*tokenize_input(char *input);
+void		free_tokens(t_token *tokens);
 t_pipeline *parse_tokens(t_token *tokens);
-void    free_pipeline(t_pipeline *pipeline);
+void    	free_pipeline(t_pipeline *pipeline);
 
 // Execution functions
-int     execute_pipeline(t_pipeline *pipeline, t_shell *shell);
-int     execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell);
-int     execute_builtin(t_command *cmd, t_shell *shell);
-int     is_builtin(char *cmd);
+int     	execute_pipeline(t_pipeline *pipeline, t_shell *shell);
+int     	execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell);
+int     	execute_builtin(t_command *cmd, t_shell *shell);
+int     	is_builtin(char *cmd);
 
 // Built-ins
-int     ft_echo(t_command *cmd);
-int     ft_cd(t_command *cmd, t_shell *shell);
-int     ft_pwd(void);
-int     ft_export(t_command *cmd, t_shell *shell);
-int     ft_unset(t_command *cmd, t_shell *shell);
-int     ft_env(t_shell *shell);
-int     ft_exit(t_command *cmd, t_shell *shell);
+int     	ft_echo(t_command *cmd);
+int     	ft_cd(t_command *cmd, t_shell *shell);
+int    		ft_pwd(void);
+int     	ft_export(t_command *cmd, t_shell *shell);
+int     	ft_unset(t_command *cmd, t_shell *shell);
+int     	ft_env(t_shell *shell);
+int     	ft_exit(t_command *cmd, t_shell *shell);
 
 // Environment functions
-t_env   *init_env(char **envp);
-void    free_env(t_env *env);
-char    *get_env_value(t_env *env, char *key);
-void    set_env_value(t_env *env, char *key, char *value);
-void    remove_env_var(t_env *env, char *key);
-char    **env_to_array(t_env *env);
-void    free_env_array(char **env_array);
-t_env   *create_env_node(char *key, char *value);
+t_env   	*init_env(char **envp);
+void    	free_env(t_env *env);
+char    	*get_env_value(t_env *env, char *key);
+void    	set_env_value(t_env *env, char *key, char *value);
+void    	remove_env_var(t_env *env, char *key);
+char    	**env_to_array(t_env *env);
+void    	free_env_array(char **env_array);
+t_env   	*create_env_node(char *key, char *value);
+
+// Environment variable expansion
+char    	*expand_variables(char *str, t_shell *shell);
+void    	expand_command_args(t_command *cmd, t_shell *shell);
+void   		expand_pipeline(t_pipeline *pipeline, t_shell *shell);
+int     	is_in_dquotes(char *str, int pos);
 
 // Utils
-char    *get_prompt(void);
-char    **split_args(char *str);
-void    free_split(char **split);
+char    	*get_prompt(void);
+int			ft_strcmp(char *s1, char *s2);
+// char    **split_args(char *str);
+// void    free_split(char **split);
 
 #endif
