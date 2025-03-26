@@ -6,13 +6,14 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/19 13:29:46 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/26 09:50:53 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minishell.h"
 
 // Echo command (with -n option support)
+// TODO : echo -nnnnnnn / echo -nnnx 
 int ft_echo(t_command *cmd)
 {
     int i;
@@ -47,6 +48,7 @@ int ft_echo(t_command *cmd)
 }
 
 // Change directory command
+// TODO : cd - / cd ~
 int ft_cd(t_command *cmd, t_shell *shell)
 {
     char *path;

@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:49:55 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/19 13:33:02 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/26 08:12:41 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,7 +81,6 @@ void free_env(t_env *env)
 }
 
 // Get the value of an environment variable 
-// !!!!! GERER LES SIMPLES ET DOUBLES QUOTES
 char *get_env_value(t_env *env, char *key)
 {
     while (env)

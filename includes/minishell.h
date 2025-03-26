@@ -96,6 +96,7 @@ t_pipeline *parse_tokens(t_token *tokens);
 void    	free_pipeline(t_pipeline *pipeline);
 
 // Execution functions
+int         setup_heredoc(t_command *cmd, t_shell *shell);
 int     	execute_pipeline(t_pipeline *pipeline, t_shell *shell);
 int     	execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell);
 int     	execute_builtin(t_command *cmd, t_shell *shell);
