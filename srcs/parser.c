@@ -66,7 +66,7 @@ void add_arg(t_command *cmd, char *arg, int quoted_state)
     // Allocate new array with one more slot
     new_args = malloc(sizeof(char *) * (i + 2));
     new_arg_quoted = malloc(sizeof(int) * (i + 2));
-    if (!new_args)
+    if (!new_args || !new_arg_quoted)
         return;
         
     // Copy existing args
