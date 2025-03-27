@@ -37,6 +37,7 @@ t_command *create_command(void)
         return NULL;
         
     cmd->args = NULL;
+	cmd->arg_quoted = NULL;
     cmd->input_file = NULL;
     cmd->output_file = NULL;
     cmd->append_output = 0;
