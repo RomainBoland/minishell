@@ -6,14 +6,13 @@
 /*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/28 11:10:07 by evan-dro         ###   ########.fr       */
+/*   Updated: 2025/03/28 18:38:23 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/minishell.h"
 
-// Echo command (with -n option support)
-// TODO : echo -nnnnnnn / echo -nnnx 
+// Echo command (with -n and -nnnn option support)
 int ft_echo(t_command *cmd)
 {
     int i;
@@ -26,7 +25,7 @@ int ft_echo(t_command *cmd)
     // Check for -n option (check how many n / )
     i = 1;
     n_flag = 0;
-    while (cmd->args[i] && cmd->args[i][0] == '-')
+    while (cmd->args[i] && cmd->args[i][0] == '-' && cmd->args[i][1] == 'n')
     {
         j = 1;
         while (cmd->args[i][j] == 'n')
@@ -54,7 +53,7 @@ int ft_echo(t_command *cmd)
 }
 
 // Change directory command
-// TODO : cd - / cd ~
+// QUESTION : le vrai prompt est de bash: cd: -x: invalid option, faut il changer le message d'erreur duc?
 int ft_cd(t_command *cmd, t_shell *shell)
 {
     char *path;
@@ -69,9 +68,19 @@ int ft_cd(t_command *cmd, t_shell *shell)
         ft_putendl_fd("minishell: cd: error retrieving current directory", STDERR_FILENO);
         return 1;
     }
-    
+
+    // Two or more arguments - Error
+    if (cmd->args[2])
+    {
+        ft_putendl_fd("minishell: cd: too many arguments", STDERR_FILENO);
+        return (1);
+    }
+
     // No arguments - go to HOME
-    if (!cmd->args[1])
+    if (!cmd->args[1] 
+        || ft_strncmp(cmd->args[1], "~", 2) == 0 
+        || ft_strncmp(cmd->args[1], "~/", 3) == 0 
+        || ft_strncmp(cmd->args[1], "--", 3) == 0)
     {
         path = get_env_value(shell->env, "HOME");
         if (!path)
@@ -80,11 +89,39 @@ int ft_cd(t_command *cmd, t_shell *shell)
             return 1;
         }
     }
+
+    // Cd with path beginning by ~/
+    else if (cmd->args[1][0] == '~' && cmd->args[1][1] == '/' && cmd->args[1][2] != '\0')
+    {
+        char *subpath = ft_substr(cmd->args[1], 1, ft_strlen(cmd->args[1]) - 1);
+        path = ft_strjoin(get_env_value(shell->env, "HOME"), subpath);
+        if (!path)
+        {
+            ft_putendl_fd("minishell: cd: HOME not set", STDERR_FILENO);
+            return 1;
+        }
+    }
+    // Cd with - 
+    else if (ft_strncmp(cmd->args[1], "-", 2) == 0)
+    {
+        path = get_env_value(shell->env, "OLDPWD");
+        if (!path)
+        {
+            ft_putendl_fd("minishell: cd: OLDPWD not set", STDERR_FILENO);
+            return 1;
+        }
+    }
+    // Cd with wrong option
+    else if (cmd->args[1][0] == '-' && cmd->args[1][1] != '\0')
+    {
+        ft_putendl_fd("minishell: cd: invalid option", STDERR_FILENO);
+        return 2;
+    }
     else
     {
         path = cmd->args[1];
     }
-    
+
     // Change directory
     if (chdir(path) != 0)
     {
@@ -124,6 +161,7 @@ int ft_pwd(void)
 }
 
 // Export a variable to the environment
+// Faire export -x puis la variable d'envi
 int ft_export(t_command *cmd, t_shell *shell)
 {
     int i;
