@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   builtin.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/26 09:50:53 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/28 11:10:07 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 int ft_echo(t_command *cmd)
 {
     int i;
+    int j;
     int n_flag;
     
     if (!cmd || !cmd->args)
@@ -25,13 +26,18 @@ int ft_echo(t_command *cmd)
     // Check for -n option (check how many n / )
     i = 1;
     n_flag = 0;
-    while (cmd->args[i] && ft_strncmp(cmd->args[i], "-n", 3) == 0)
+    while (cmd->args[i] && cmd->args[i][0] == '-')
     {
+        j = 1;
+        while (cmd->args[i][j] == 'n')
+            j++;
+        if (cmd->args[i][j] != '\0')
+            break;
         n_flag = 1;
-        i++;
+        i++;  
     }
-    
-    // Print arguments with spaces between them
+
+   // Print arguments with spaces between them
     while (cmd->args[i])
     {
         ft_putstr_fd(cmd->args[i], STDOUT_FILENO);
