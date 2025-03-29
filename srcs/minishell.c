@@ -15,17 +15,22 @@
 volatile sig_atomic_t g_signal = 0;
 
 // Signal handler for interactive mode
-// CHECK DOUBLE PRINT WHEN INTERACTIVE MODE CTRL+C (cat ou <<) !!!!!!!!!!!!
+// when pressing ctrl+c in heredoc, should display > ^C but we just get a newline instead
 void signal_handler(int signum)
 {
     g_signal = signum;
     
     if (signum == SIGINT) // Ctrl+C
     {
-        write(STDOUT_FILENO, "\n", 1);  // New line
-        rl_on_new_line();               // Tell readline we're on a new line
-        rl_replace_line("", 0);         // Clear the current input line
-        rl_redisplay();                 // Redisplay the prompt
+        // Just write a newline and set flag - readline will handle redisplay
+        write(STDOUT_FILENO, "\n", 1);
+        rl_on_new_line();
+        
+        // Only replace line and redisplay if we're in readline context
+        if (rl_readline_state & RL_STATE_READCMD) {
+            rl_replace_line("", 0);
+            rl_redisplay();
+        }
     }
 }
 
