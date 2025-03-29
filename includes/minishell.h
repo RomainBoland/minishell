@@ -45,6 +45,7 @@ typedef struct s_command t_command;
 typedef struct s_pipeline t_pipeline;
 typedef struct s_env t_env;
 typedef struct s_shell t_shell;
+typedef struct s_redirection t_redirection;
 
 // Structures
 struct s_token
@@ -55,14 +56,20 @@ struct s_token
     struct s_token  *next;
 };
 
+struct s_redirection
+{
+    char *file;
+    int type;  // REDIR_IN, REDIR_OUT, APPEND, HEREDOC
+    struct s_redirection *next;
+};
+
 struct s_command
 {
-    char    **args;          // Command and its arguments
-    int     *arg_quoted;     // Array tracking quote state for each arg
-    char    *input_file;     // Input redirection
-    char    *output_file;    // Output redirection
-    int     append_output;   // Flag for >> redirection
-    char    *heredoc_delim;  // Delimiter for heredoc
+    char			**args;
+    int				*arg_quoted;
+    t_redirection	*redirections;  // Linked list of redirections
+    char			*heredoc_delim;  // Keep this for convenience
+	int				has_heredoc;
 };
 
 struct s_pipeline

@@ -203,18 +203,20 @@ int	is_in_dquotes(char *str, int pos)
 }
 
 // Expand variables in a command's arguments
-void	expand_command_args(t_command *cmd, t_shell *shell)
+void expand_command_args(t_command *cmd, t_shell *shell)
 {
-	int	i;
-	char	*expanded;
+    int i;
+    char *expanded;
+    t_redirection *redir;
 
-	if (!cmd || !cmd->args)
-		return ;
+    if (!cmd || !cmd->args)
+        return;
 
-	i = 0;
-	while  (cmd->args[i])
-	{
-		 // Skip expansion for single-quoted strings
+    // Expand command arguments
+    i = 0;
+    while (cmd->args[i])
+    {
+        // Skip expansion for single-quoted strings
         if (cmd->arg_quoted[i] == 1) // 1 = single quoted
         {
             i++;
@@ -229,36 +231,35 @@ void	expand_command_args(t_command *cmd, t_shell *shell)
             cmd->args[i] = expanded;
         }
         i++;
-	}
+    }
 
-	// also expand redirection filenames
-	if (cmd->input_file)
-	{
-		expanded = expand_variables(cmd->input_file, shell);
-		if (expanded)
-		{
-			free(cmd->input_file);
-			cmd->input_file = expanded;
-		}
-	}
-	if (cmd->output_file)
-	{
-		expanded = expand_variables(cmd->output_file, shell);
-		if (expanded)
-		{
-			free(cmd->output_file);
-			cmd->output_file = expanded;
-		}
-	}
-	if (cmd->heredoc_delim)
-	{
-		expanded = expand_variables(cmd->heredoc_delim, shell);
-		if (expanded)
-		{
-			free(cmd->heredoc_delim);
-			cmd->heredoc_delim = expanded;
-		}
-	}
+    // Expand redirect filenames
+    redir = cmd->redirections;
+    while (redir)
+    {
+        // Don't expand filenames in heredocs
+        if (redir->type != TOKEN_HEREDOC)
+        {
+            expanded = expand_variables(redir->file, shell);
+            if (expanded)
+            {
+                free(redir->file);
+                redir->file = expanded;
+            }
+        }
+        redir = redir->next;
+    }
+    
+    // Make sure heredoc_delim is also expanded if needed
+    if (cmd->heredoc_delim)
+    {
+        expanded = expand_variables(cmd->heredoc_delim, shell);
+        if (expanded)
+        {
+            free(cmd->heredoc_delim);
+            cmd->heredoc_delim = expanded;
+        }
+    }
 }
 
 // Expand variables in a pipeline of commands
@@ -266,6 +267,7 @@ void expand_pipeline(t_pipeline *pipeline, t_shell *shell)
 {
     int i, j;
     char *expanded;
+    t_redirection *redir;
     
     if (!pipeline)
         return;
@@ -284,15 +286,31 @@ void expand_pipeline(t_pipeline *pipeline, t_shell *shell)
         }
         
         // Expand redirection filenames
-        if (pipeline->commands[i]->input_file)
+        redir = pipeline->commands[i]->redirections;
+        while (redir)
         {
-            expanded = expand_variables(pipeline->commands[i]->input_file, shell);
+            // Don't expand filenames in heredocs (they're processed differently)
+            if (redir->type != TOKEN_HEREDOC)
+            {
+                expanded = expand_variables(redir->file, shell);
+                if (expanded)
+                {
+                    free(redir->file);
+                    redir->file = expanded;
+                }
+            }
+            redir = redir->next;
+        }
+        
+        // Expand heredoc delimiter if it exists
+        if (pipeline->commands[i]->heredoc_delim)
+        {
+            expanded = expand_variables(pipeline->commands[i]->heredoc_delim, shell);
             if (expanded)
             {
-                free(pipeline->commands[i]->input_file);
-                pipeline->commands[i]->input_file = expanded;
+                free(pipeline->commands[i]->heredoc_delim);
+                pipeline->commands[i]->heredoc_delim = expanded;
             }
         }
-        // ... Similar code for other redirections
     }
 }

@@ -33,6 +33,7 @@ void print_pipeline(t_pipeline *pipeline)
     for (int i = 0; i < pipeline->cmd_count; i++)
     {
         t_command *cmd = pipeline->commands[i];
+        t_redirection *redir;
         
         printf("Command %d:\n", i + 1);
         
@@ -44,12 +45,25 @@ void print_pipeline(t_pipeline *pipeline)
         }
         printf("\n");
         
-        if (cmd->input_file)
-            printf("  Input from: %s\n", cmd->input_file);
+        // Print redirections
+        printf("  Redirections:\n");
+        redir = cmd->redirections;
+        while (redir)
+        {
+            if (redir->type == TOKEN_REDIR_IN)
+                printf("    < %s\n", redir->file);
+            else if (redir->type == TOKEN_REDIR_OUT)
+                printf("    > %s\n", redir->file);
+            else if (redir->type == TOKEN_APPEND)
+                printf("    >> %s\n", redir->file);
+            else if (redir->type == TOKEN_HEREDOC)
+                printf("    << %s\n", redir->file);
+            
+            redir = redir->next;
+        }
+        
         if (cmd->heredoc_delim)
             printf("  Heredoc delimiter: %s\n", cmd->heredoc_delim);
-        if (cmd->output_file)
-            printf("  Output to: %s (append: %d)\n", cmd->output_file, cmd->append_output);
     }
 }
 

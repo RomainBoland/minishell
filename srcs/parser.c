@@ -37,13 +37,46 @@ t_command *create_command(void)
         return NULL;
         
     cmd->args = NULL;
-	cmd->arg_quoted = NULL;
-    cmd->input_file = NULL;
-    cmd->output_file = NULL;
-    cmd->append_output = 0;
+    cmd->arg_quoted = NULL;
+    cmd->redirections = NULL;  // Initialize redirections list
+    cmd->has_heredoc = 0;      // No heredoc by default
     cmd->heredoc_delim = NULL;
     
     return cmd;
+}
+
+void add_redirection(t_command *cmd, char *file, int type)
+{
+	t_redirection	*new_redir;
+	t_redirection	*current;
+
+	new_redir = malloc(sizeof(t_redirection));
+	if (!new_redir)
+		return ;
+	
+	new_redir->file = ft_strdup(file);
+	new_redir->type = type;
+	new_redir->next = NULL;
+
+	if (!cmd->redirections)
+	{
+		cmd->redirections = new_redir;
+	}
+	else
+	{
+		current = cmd->redirections;
+		while (current->next)
+			current = current->next;
+		current->next = new_redir;
+	}
+
+	if (type == TOKEN_HEREDOC)
+	{
+		cmd->has_heredoc = 1;
+		if (cmd->heredoc_delim)
+			free(cmd->heredoc_delim);
+		cmd->heredoc_delim = ft_strdup(file);
+	}
 }
 
 // Add word to command arguments
@@ -130,37 +163,35 @@ t_pipeline *parse_tokens(t_token *tokens)
             continue;
         }
         
-        // Handle redirections
-        if (current->type == TOKEN_REDIR_IN && current->next && current->next->type == TOKEN_WORD)
-        {
-            pipeline->commands[cmd_index]->input_file = ft_strdup(current->next->value);
-            current = current->next->next;  // Skip redirection and filename
-            continue;
-        }
-        
-        if (current->type == TOKEN_REDIR_OUT && current->next && current->next->type == TOKEN_WORD)
-        {
-            pipeline->commands[cmd_index]->output_file = ft_strdup(current->next->value);
-            pipeline->commands[cmd_index]->append_output = 0;
-            current = current->next->next;  // Skip redirection and filename
-            continue;
-        }
-        
-        if (current->type == TOKEN_APPEND && current->next && current->next->type == TOKEN_WORD)
-        {
-            pipeline->commands[cmd_index]->output_file = ft_strdup(current->next->value);
-            pipeline->commands[cmd_index]->append_output = 1;
-            current = current->next->next;  // Skip redirection and filename
-            continue;
-        }
-        
-        if (current->type == TOKEN_HEREDOC && current->next && current->next->type == TOKEN_WORD)
-        {
-            pipeline->commands[cmd_index]->heredoc_delim = ft_strdup(current->next->value);
-            current = current->next->next;  // Skip redirection and delimiter
-            continue;
-        }
-        
+		// Replace the existing redirection handling code with:
+		if (current->type == TOKEN_REDIR_IN && current->next && current->next->type == TOKEN_WORD)
+		{
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_IN);
+			current = current->next->next;  // Skip redirection and filename
+			continue;
+		}
+
+		if (current->type == TOKEN_REDIR_OUT && current->next && current->next->type == TOKEN_WORD)
+		{
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_OUT);
+			current = current->next->next;  // Skip redirection and filename
+			continue;
+		}
+
+		if (current->type == TOKEN_APPEND && current->next && current->next->type == TOKEN_WORD)
+		{
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_APPEND);
+			current = current->next->next;  // Skip redirection and filename
+			continue;
+		}
+
+		if (current->type == TOKEN_HEREDOC && current->next && current->next->type == TOKEN_WORD)
+		{
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_HEREDOC);
+			current = current->next->next;  // Skip redirection and delimiter
+			continue;
+		}
+				
         // Handle normal words (command and arguments)
         if (current->type == TOKEN_WORD)
         {
@@ -179,6 +210,9 @@ t_pipeline *parse_tokens(t_token *tokens)
 // Free command structure
 void free_command(t_command *cmd)
 {
+    t_redirection *redir;
+    t_redirection *next_redir;
+    
     if (!cmd)
         return;
         
@@ -190,11 +224,20 @@ void free_command(t_command *cmd)
         free(cmd->args);
     }
     
-    // Free redirection strings
-    if (cmd->input_file)
-        free(cmd->input_file);
-    if (cmd->output_file)
-        free(cmd->output_file);
+    if (cmd->arg_quoted)
+        free(cmd->arg_quoted);
+    
+    // Free redirections
+    redir = cmd->redirections;
+    while (redir)
+    {
+        next_redir = redir->next;
+        free(redir->file);
+        free(redir);
+        redir = next_redir;
+    }
+    
+    // Free heredoc delimiter if it exists
     if (cmd->heredoc_delim)
         free(cmd->heredoc_delim);
         

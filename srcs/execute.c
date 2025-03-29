@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execute.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/26 10:49:21 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/29 11:58:42 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
     pid_t   pid;
     int     status;
     
-    if (!cmd->heredoc_delim)
+    if (!cmd->heredoc_delim || !cmd->has_heredoc)
         return STDIN_FILENO;
     
     if (pipe(pipe_fd) < 0)
@@ -195,50 +195,71 @@ char *find_executable(char *cmd, t_shell *shell)
 // Set up redirections for a command
 int setup_redirections(t_command *cmd, int in_fd, int out_fd)
 {
+    t_redirection *redir;
     int fd;
     
-    // Set up input redirection
-    if (cmd->input_file)
-    {
-        fd = open(cmd->input_file, O_RDONLY);
-        if (fd < 0)
-        {
-            perror(cmd->input_file);
-            return 0;
-        }
-        
-        dup2(fd, STDIN_FILENO);
-        close(fd);
-    }
-    else if (in_fd != STDIN_FILENO)
+    if (!cmd)
+        return 0;
+    
+    // Set default stdin/stdout if no custom ones provided
+    if (in_fd != STDIN_FILENO)
     {
         dup2(in_fd, STDIN_FILENO);
         close(in_fd);
     }
     
-    // Set up output redirection
-    if (cmd->output_file)
-    {
-        int flags = O_WRONLY | O_CREAT;
-        if (cmd->append_output)
-            flags |= O_APPEND;
-        else
-            flags |= O_TRUNC;
-        
-        fd = open(cmd->output_file, flags, 0644);
-        if (fd < 0)
-        {
-            perror(cmd->output_file);
-            return 0;
-        }
-        
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-    }
-    else if (out_fd != STDOUT_FILENO)
+    if (out_fd != STDOUT_FILENO)
     {
         dup2(out_fd, STDOUT_FILENO);
         close(out_fd);
+    }
+    
+    // Process all redirections in order
+    redir = cmd->redirections;
+    while (redir)
+    {
+        // Handle input redirection (<)
+        if (redir->type == TOKEN_REDIR_IN)
+        {
+            fd = open(redir->file, O_RDONLY);
+            if (fd < 0)
+            {
+                perror(redir->file);
+                return 0;
+            }
+            
+            dup2(fd, STDIN_FILENO);
+            close(fd);
+        }
+        // Handle output redirection (>)
+        else if (redir->type == TOKEN_REDIR_OUT)
+        {
+            fd = open(redir->file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+            if (fd < 0)
+            {
+                perror(redir->file);
+                return 0;
+            }
+            
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+        }
+        // Handle append output redirection (>>)
+        else if (redir->type == TOKEN_APPEND)
+        {
+            fd = open(redir->file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+            if (fd < 0)
+            {
+                perror(redir->file);
+                return 0;
+            }
+            
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+        }
+        // Heredoc is handled separately
+        
+        redir = redir->next;
     }
     
     return 1;
@@ -260,9 +281,19 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         if (heredoc_fd < 0)
             return 1;  // Heredoc setup failed or was interrupted
         
-        // Use heredoc as input if no explicit input file
-        if (!cmd->input_file)
-            in_fd = heredoc_fd;
+			int has_input_redirection = 0;
+			t_redirection *redir = cmd->redirections;
+			while (redir)
+			{
+				if (redir->type == TOKEN_REDIR_IN)
+				{
+					has_input_redirection = 1;
+					break;
+				}
+				redir = redir->next;
+			}
+			if (!has_input_redirection)
+            	in_fd = heredoc_fd;
     }
     
     // The rest of your execute_command function remains the same...
@@ -422,7 +453,7 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
     // Set up heredocs for all commands first
     for (i = 0; i < pipeline->cmd_count; i++)
     {
-        if (pipeline->commands[i]->heredoc_delim)
+        if (pipeline->commands[i]->has_heredoc)
         {
             heredoc_fds[i] = setup_heredoc(pipeline->commands[i], shell);
             if (heredoc_fds[i] < 0)
@@ -444,8 +475,21 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         }
     }
     
+    // Determine initial input for first command
+    t_redirection *first_input = NULL;
+    if (pipeline->commands[0]->redirections)
+    {
+        t_redirection *temp = pipeline->commands[0]->redirections;
+        while (temp)
+        {
+            if (temp->type == TOKEN_REDIR_IN)
+                first_input = temp;  // Find the last input redirection
+            temp = temp->next;
+        }
+    }
+
     // Start with standard input or heredoc for first command
-    in_fd = pipeline->commands[0]->input_file ? STDIN_FILENO : heredoc_fds[0];
+    in_fd = (first_input) ? STDIN_FILENO : heredoc_fds[0];
     
     // Create initial pipes if needed
     if (pipeline->cmd_count > 1)
@@ -528,13 +572,13 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                 dup2(in_fd, STDIN_FILENO);
                 close(in_fd);
             }
-            else if (pipeline->commands[i]->input_file)
+            else if (first_input)
             {
-                // Handle input file for first command
-                int fd = open(pipeline->commands[i]->input_file, O_RDONLY);
+                // Handle input file for first command if it exists
+                int fd = open(first_input->file, O_RDONLY);
                 if (fd < 0)
                 {
-                    perror(pipeline->commands[i]->input_file);
+                    perror(first_input->file);
                     exit(1);
                 }
                 dup2(fd, STDIN_FILENO);
@@ -570,24 +614,44 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                 }
             }
             
-            // Handle output redirection for the command
-            if (pipeline->commands[i]->output_file)
+            // Process all redirections for this command in order
+            t_redirection *redir = pipeline->commands[i]->redirections;
+            while (redir)
             {
-                int flags = O_WRONLY | O_CREAT;
-                if (pipeline->commands[i]->append_output)
-                    flags |= O_APPEND;
-                else
-                    flags |= O_TRUNC;
-                
-                int fd = open(pipeline->commands[i]->output_file, flags, 0644);
-                if (fd < 0)
+                if (redir->type == TOKEN_REDIR_IN)
                 {
-                    perror(pipeline->commands[i]->output_file);
-                    exit(1);
+                    int fd = open(redir->file, O_RDONLY);
+                    if (fd < 0)
+                    {
+                        perror(redir->file);
+                        exit(1);
+                    }
+                    dup2(fd, STDIN_FILENO);
+                    close(fd);
                 }
-                
-                dup2(fd, STDOUT_FILENO);
-                close(fd);
+                else if (redir->type == TOKEN_REDIR_OUT)
+                {
+                    int fd = open(redir->file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+                    if (fd < 0)
+                    {
+                        perror(redir->file);
+                        exit(1);
+                    }
+                    dup2(fd, STDOUT_FILENO);
+                    close(fd);
+                }
+                else if (redir->type == TOKEN_APPEND)
+                {
+                    int fd = open(redir->file, O_WRONLY | O_CREAT | O_APPEND, 0644);
+                    if (fd < 0)
+                    {
+                        perror(redir->file);
+                        exit(1);
+                    }
+                    dup2(fd, STDOUT_FILENO);
+                    close(fd);
+                }
+                redir = redir->next;
             }
             
             // Execute command
@@ -639,8 +703,17 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         // Update input for next command
         if (i < pipeline->cmd_count - 1)
         {
-            // If next command has input redirection, we'll use that instead of pipe
-            if (pipeline->commands[i+1]->input_file)
+            // Check if next command has input redirection
+            t_redirection *next_input = NULL;
+            t_redirection *temp = pipeline->commands[i+1]->redirections;
+            while (temp)
+            {
+                if (temp->type == TOKEN_REDIR_IN)
+                    next_input = temp;  // Find the last input redirection
+                temp = temp->next;
+            }
+            
+            if (next_input)
                 in_fd = STDIN_FILENO;  // Will be handled in child
             else if (heredoc_fds[i+1] != STDIN_FILENO)
                 in_fd = heredoc_fds[i+1];  // Use heredoc
