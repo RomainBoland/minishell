@@ -68,7 +68,8 @@ struct s_command
     char			**args;
     int				*arg_quoted;
     t_redirection	*redirections;  // Linked list of redirections
-    char			*heredoc_delim;  // Keep this for convenience
+    char			**heredoc_delims;
+	int				heredoc_count;
 	int				has_heredoc;
 };
 

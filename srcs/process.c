@@ -62,8 +62,11 @@ void print_pipeline(t_pipeline *pipeline)
             redir = redir->next;
         }
         
-        if (cmd->heredoc_delim)
-            printf("  Heredoc delimiter: %s\n", cmd->heredoc_delim);
+        if (cmd->heredoc_delims)
+		{
+			for (int i = 0; i < cmd->heredoc_count; i++)
+				printf("  Heredoc delimiter: %s\n", cmd->heredoc_delims[i]);
+		}
     }
 }
 

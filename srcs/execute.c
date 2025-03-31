@@ -6,7 +6,7 @@
 /*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/29 11:58:42 by rboland          ###   ########.fr       */
+/*   Updated: 2025/03/31 12:19:57 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
     pid_t   pid;
     int     status;
     
-    if (!cmd->heredoc_delim || !cmd->has_heredoc)
+    if (!cmd->has_heredoc || cmd->heredoc_count == 0)
         return STDIN_FILENO;
     
     if (pipe(pipe_fd) < 0)
@@ -45,34 +45,59 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
         
         close(pipe_fd[0]);  // Close read end in child
         
-        // Read lines until delimiter is found
-        while (1)
+        // Process each heredoc delimiter in order
+        for (int i = 0; i < cmd->heredoc_count; i++)
         {
-            line = readline("> ");  // Prompt for heredoc input
+            // For each heredoc, we collect its input lines
+            char *collected_input = ft_strdup("");
             
-            if (!line || ft_strcmp(line, cmd->heredoc_delim) == 0)
+            // Read lines until current delimiter is found
+            while (1)
             {
+                line = readline("> ");  // Prompt for heredoc input
+                
+                if (!line || ft_strcmp(line, cmd->heredoc_delims[i]) == 0)
+                {
+                    free(line);
+                    break;
+                }
+                
+                // Only for the last heredoc, save the content
+                if (i == cmd->heredoc_count - 1)
+                {
+                    // Expand variables
+                    char *expanded = expand_variables(line, shell);
+                    if (expanded)
+                    {
+                        char *temp = collected_input;
+                        collected_input = ft_strjoin(collected_input, expanded);
+                        free(temp);
+                        temp = collected_input;
+                        collected_input = ft_strjoin(collected_input, "\n");
+                        free(temp);
+                        free(expanded);
+                    }
+                    else
+                    {
+                        char *temp = collected_input;
+                        collected_input = ft_strjoin(collected_input, line);
+                        free(temp);
+                        temp = collected_input;
+                        collected_input = ft_strjoin(collected_input, "\n");
+                        free(temp);
+                    }
+                }
+                
                 free(line);
-                break;
             }
             
-            // Expand variables in the heredoc line if not in single quotes
-            char *expanded = expand_variables(line, shell);
-            if (expanded)
+            // If this is the last heredoc, write its content to the pipe
+            if (i == cmd->heredoc_count - 1)
             {
-                // Write to pipe and add newline
-                write(pipe_fd[1], expanded, ft_strlen(expanded));
-                write(pipe_fd[1], "\n", 1);
-                free(expanded);
-            }
-            else
-            {
-                // Fallback to original line if expansion fails
-                write(pipe_fd[1], line, ft_strlen(line));
-                write(pipe_fd[1], "\n", 1);
+                write(pipe_fd[1], collected_input, ft_strlen(collected_input));
             }
             
-            free(line);
+            free(collected_input);
         }
         
         close(pipe_fd[1]);
@@ -275,7 +300,7 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         return 0;
     
     // Set up heredoc if needed
-    if (cmd->heredoc_delim)
+    if (cmd->has_heredoc)
     {
         heredoc_fd = setup_heredoc(cmd, shell);
         if (heredoc_fd < 0)

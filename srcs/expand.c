@@ -251,13 +251,16 @@ void expand_command_args(t_command *cmd, t_shell *shell)
     }
     
     // Make sure heredoc_delim is also expanded if needed
-    if (cmd->heredoc_delim)
+    for (i = 0; i < cmd->heredoc_count; i++)
     {
-        expanded = expand_variables(cmd->heredoc_delim, shell);
-        if (expanded)
+        if (cmd->heredoc_delims[i])
         {
-            free(cmd->heredoc_delim);
-            cmd->heredoc_delim = expanded;
+            expanded = expand_variables(cmd->heredoc_delims[i], shell);
+            if (expanded)
+            {
+                free(cmd->heredoc_delims[i]);
+                cmd->heredoc_delims[i] = expanded;
+            }
         }
     }
 }
@@ -302,14 +305,17 @@ void expand_pipeline(t_pipeline *pipeline, t_shell *shell)
             redir = redir->next;
         }
         
-        // Expand heredoc delimiter if it exists
-        if (pipeline->commands[i]->heredoc_delim)
+        // Expand heredoc delimiters if it exists
+        for (int k = 0; k < pipeline->commands[i]->heredoc_count; k++)
         {
-            expanded = expand_variables(pipeline->commands[i]->heredoc_delim, shell);
-            if (expanded)
+            if (pipeline->commands[i]->heredoc_delims[k])
             {
-                free(pipeline->commands[i]->heredoc_delim);
-                pipeline->commands[i]->heredoc_delim = expanded;
+                expanded = expand_variables(pipeline->commands[i]->heredoc_delims[k], shell);
+                if (expanded)
+                {
+                    free(pipeline->commands[i]->heredoc_delims[k]);
+                    pipeline->commands[i]->heredoc_delims[k] = expanded;
+                }
             }
         }
     }

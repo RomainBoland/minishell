@@ -40,7 +40,8 @@ t_command *create_command(void)
     cmd->arg_quoted = NULL;
     cmd->redirections = NULL;  // Initialize redirections list
     cmd->has_heredoc = 0;      // No heredoc by default
-    cmd->heredoc_delim = NULL;
+	cmd->heredoc_count = 0;
+    cmd->heredoc_delims = NULL;
     
     return cmd;
 }
@@ -49,7 +50,9 @@ void add_redirection(t_command *cmd, char *file, int type)
 {
 	t_redirection	*new_redir;
 	t_redirection	*current;
+	char			**new_delim;
 
+	new_delim = NULL;
 	new_redir = malloc(sizeof(t_redirection));
 	if (!new_redir)
 		return ;
@@ -73,9 +76,21 @@ void add_redirection(t_command *cmd, char *file, int type)
 	if (type == TOKEN_HEREDOC)
 	{
 		cmd->has_heredoc = 1;
-		if (cmd->heredoc_delim)
-			free(cmd->heredoc_delim);
-		cmd->heredoc_delim = ft_strdup(file);
+
+		new_delim = malloc(sizeof(char *) * (cmd->heredoc_count + 1));
+		if (!new_delim)
+			return ;
+		
+		for (int i = 0; i < cmd->heredoc_count; i++)
+			new_delim[i] = cmd->heredoc_delims[i];
+		
+		new_delim[cmd->heredoc_count] = ft_strdup(file);
+
+		if (cmd->heredoc_delims)
+			free(cmd->heredoc_delims);
+
+		cmd->heredoc_delims = new_delim;
+		cmd->heredoc_count++;
 	}
 }
 
@@ -238,8 +253,12 @@ void free_command(t_command *cmd)
     }
     
     // Free heredoc delimiter if it exists
-    if (cmd->heredoc_delim)
-        free(cmd->heredoc_delim);
+    if (cmd->heredoc_delims)
+    {
+		for (int i = 0; i < cmd->heredoc_count; i++)
+			free(cmd->heredoc_delims[i]);
+		free(cmd->heredoc_delims);
+	}
         
     free(cmd);
 }
