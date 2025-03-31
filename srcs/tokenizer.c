@@ -95,7 +95,7 @@ char *extract_word(char *input, int *i)
             end++;
             continue;
         }
-        else if (input[end] == '\"' && !in_double_quotes)
+        else if (input[end] == '\"' && !in_single_quotes) // Fixed: check for !in_single_quotes
         {
             in_double_quotes = !in_double_quotes;
             end++;

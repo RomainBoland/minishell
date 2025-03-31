@@ -36,6 +36,13 @@
 # define TOKEN_APPEND    4  // >>
 # define TOKEN_HEREDOC   5  // <<
 
+// Exit code
+# define EXIT_SUCCESS 0
+# define EXIT_FAILURE 1
+# define EXIT_INVALID_USAGE 2
+# define EXIT_NOT_EXECUTABLE 126
+# define EXIT_NOT_FOUND 127
+
 // Global signal variable - this is the only global we're allowed to use
 extern volatile sig_atomic_t g_signal;
 
