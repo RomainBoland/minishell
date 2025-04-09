@@ -80,10 +80,7 @@ void process_input(char *input, t_shell *shell)
     // Tokenize input
     tokens = tokenize_input(input);
     if (!tokens)
-    {
-        printf("Error: Failed to tokenize input\n");
         return;
-    }
     
     // Debug: print tokens
     // print_tokens(tokens);
