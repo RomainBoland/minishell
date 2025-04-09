@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   builtin.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
+/*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/31 12:55:26 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/09 18:06:28 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,7 +86,7 @@ int ft_cd(t_command *cmd, t_shell *shell)
         if (!path)
         {
             ft_putendl_fd("minishell: cd: HOME not set", STDERR_FILENO);
-            return 1;
+            return (1);
         }
     }
 
@@ -98,24 +98,25 @@ int ft_cd(t_command *cmd, t_shell *shell)
         if (!path)
         {
             ft_putendl_fd("minishell: cd: HOME not set", STDERR_FILENO);
-            return 1;
+            return (1);
         }
     }
     // Cd with - 
     else if (ft_strncmp(cmd->args[1], "-", 2) == 0)
     {
         path = get_env_value(shell->env, "OLDPWD");
+        printf("%s\n", path);
         if (!path)
         {
             ft_putendl_fd("minishell: cd: OLDPWD not set", STDERR_FILENO);
-            return 1;
+            return (1);
         }
     }
     // Cd with wrong option
     else if (cmd->args[1][0] == '-' && cmd->args[1][1] != '\0')
     {
         ft_putendl_fd("minishell: cd: invalid option", STDERR_FILENO);
-        return 2;
+        return (2);
     }
     else
     {
@@ -160,20 +161,78 @@ int ft_pwd(void)
     return 0;
 }
 
+
+// Sert a trier l'array d'environnement
+void    bubble_sort(char **env_array)
+{
+    int     len;
+    int     i;
+    int     j;
+    char    *temp;
+
+    len = 0;
+    while (env_array[len])
+        len++;
+    i = 0;
+    while (i < len - 1)
+    {
+        j = 0;
+        while (j < len - 1)
+        {
+            if (ft_strcmp(env_array[j], env_array[j + 1]) > 0)
+            {
+                temp = env_array[j];
+                env_array[j] = env_array[j + 1];
+                env_array[j + 1] = temp;
+            }
+            j++;
+        }
+        i++;
+    }
+}
+
+
 // Export a variable to the environment
-// Faire export -x puis la variable d'envi
+// _= apparait dans l'export et l'env alors qu'il n'apparait pas dans l'export normalement
+// _= ne prend pas la bonne valeur, il reste bloque a ./minishell
+// faire en sorte que export x donne dans export x et pas x=""
 int ft_export(t_command *cmd, t_shell *shell)
 {
     int i;
     char *equals_sign;
+    char    **env_array;
     
     if (!cmd || !cmd->args)
         return 1;
-    
+    env_array = NULL;
+    i = 0;
     // If no arguments, print current environment (sorted)
     if (!cmd->args[1])
     {
-        return ft_env(shell);  // For simplicity, just call env for now
+        env_array = env_to_array(shell->env);
+        bubble_sort(env_array);
+        
+
+        while (env_array[i])
+        {
+            printf("%s\n", env_array[i]);
+            // equals_sign = ft_strchr(env_array[i], '=');
+            // ft_putstr_fd("declare -x ", STDOUT_FILENO);
+            // if (equals_sign)
+            // {
+            //     write(1, env_array[i], equals_sign - env_array[i]);
+            //     ft_putstr_fd("=\"", STDOUT_FILENO);
+            //     ft_putstr_fd(equals_sign + 1, STDOUT_FILENO);
+            //     ft_putstr_fd("\"\n", STDOUT_FILENO);
+            // }
+            // else
+            // {
+            //     ft_putstr_fd(env_array[i], STDOUT_FILENO);
+            //     ft_putchar_fd('\n', STDOUT_FILENO);
+            // }
+            i++;        
+        }
+    return (0);
     }
     
     // Process each argument
@@ -235,7 +294,7 @@ int ft_env(t_shell *shell)
         current = current->next;
     }
     
-    return 0;
+    return (0);
 }
 
 // Exit the shell
