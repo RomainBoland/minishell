@@ -97,19 +97,12 @@ void process_input(char *input, t_shell *shell)
     // Expand environment variables
     expand_pipeline(pipeline, shell);
     
-    // Debug: print pipeline
-    // print_pipeline(pipeline);
     
     // Execute the pipeline
     status = execute_pipeline(pipeline, shell);
 	shell->last_exit_status = status;
     
-    // Update the $? variable (we'll implement this later with environment handling)
-    // set_last_exit_status(status);
-    
-    // For debugging, you can still print the pipeline
-    // print_pipeline(pipeline);
-    
+    setup_signals();
     // Clean up
     free_tokens(tokens);
     free_pipeline(pipeline);

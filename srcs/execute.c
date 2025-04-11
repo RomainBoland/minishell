@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execute.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
+/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/31 12:19:57 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/11 15:38:36 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
     char    *line;
     pid_t   pid;
     int     status;
+    struct sigaction old_int, old_quit, sa_int, sa_quit;
     
     if (!cmd->has_heredoc || cmd->heredoc_count == 0)
         return STDIN_FILENO;
@@ -28,6 +29,18 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
         return -1;
     }
     
+    // Save current signal handlers
+    sigaction(SIGINT, NULL, &old_int);
+    sigaction(SIGQUIT, NULL, &old_quit);
+    
+    // Set up temporary signal handlers for parent process during heredoc
+    ft_memset(&sa_int, 0, sizeof(sa_int));
+    ft_memset(&sa_quit, 0, sizeof(sa_quit));
+    sa_int.sa_handler = SIG_IGN;  // Ignore SIGINT in parent
+    sa_quit.sa_handler = SIG_IGN; // Ignore SIGQUIT in parent
+    sigaction(SIGINT, &sa_int, NULL);
+    sigaction(SIGQUIT, &sa_quit, NULL);
+    
     // Fork to handle signals properly in heredoc
     pid = fork();
     if (pid < 0)
@@ -35,13 +48,20 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
         perror("fork");
         close(pipe_fd[0]);
         close(pipe_fd[1]);
+        
+        // Restore original signal handlers
+        sigaction(SIGINT, &old_int, NULL);
+        sigaction(SIGQUIT, &old_quit, NULL);
         return -1;
     }
     
     if (pid == 0) // Child process
     {
         // Set up signal handling for child (heredoc reader)
-        signal(SIGINT, SIG_DFL);  // Default behavior for Ctrl+C
+        struct sigaction sa_child_int;
+        ft_memset(&sa_child_int, 0, sizeof(sa_child_int));
+        sa_child_int.sa_handler = SIG_DFL;  // Default behavior for Ctrl+C
+        sigaction(SIGINT, &sa_child_int, NULL);
         
         close(pipe_fd[0]);  // Close read end in child
         
@@ -56,6 +76,7 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
             {
                 line = readline("> ");  // Prompt for heredoc input
                 
+                // If line is NULL (Ctrl+D) or matches delimiter, break
                 if (!line || ft_strcmp(line, cmd->heredoc_delims[i]) == 0)
                 {
                     free(line);
@@ -110,9 +131,23 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
         // Wait for child to complete
         waitpid(pid, &status, 0);
         
+        // Restore original signal handlers
+        sigaction(SIGINT, &old_int, NULL);
+        sigaction(SIGQUIT, &old_quit, NULL);
+        
         // Check if child was terminated by a signal
         if (WIFSIGNALED(status))
         {
+            // If child was terminated by SIGINT (Ctrl+C)
+            if (WTERMSIG(status) == SIGINT)
+            {
+                // The child received SIGINT, which will have automatically
+                // displayed ^C in the terminal. We just need to ensure a newline.
+                ft_putchar_fd('\n', STDOUT_FILENO);
+                
+                // Make sure readline is in a good state
+                rl_on_new_line();
+            }
             close(pipe_fd[0]);
             return -1;  // Indicate heredoc was interrupted
         }
@@ -388,8 +423,12 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         if (pid == 0)  // Child process
         {
             // Set up signal handlers for child
-            signal(SIGINT, SIG_DFL);    // Default Ctrl+C behavior
-            signal(SIGQUIT, SIG_DFL);   // Default Ctrl+\ behavior
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
+            signal(SIGTSTP, SIG_DFL);
+            signal(SIGTTIN, SIG_DFL);
+            signal(SIGTTOU, SIG_DFL);
+            signal(SIGCHLD, SIG_DFL);
             
             // Set up redirections
             if (!setup_redirections(cmd, in_fd, out_fd))
@@ -588,8 +627,12 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
             free(pids);
             
             // Set up signal handlers for child
-            signal(SIGINT, SIG_DFL);    // Default Ctrl+C behavior
-            signal(SIGQUIT, SIG_DFL);   // Default Ctrl+\ behavior
+            signal(SIGINT, SIG_DFL);
+            signal(SIGQUIT, SIG_DFL);
+            signal(SIGTSTP, SIG_DFL);
+            signal(SIGTTIN, SIG_DFL);
+            signal(SIGTTOU, SIG_DFL);
+            signal(SIGCHLD, SIG_DFL);
             
             // If not first command, set input from previous pipe
             if (i > 0)
