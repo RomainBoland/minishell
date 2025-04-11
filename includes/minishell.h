@@ -133,6 +133,8 @@ char    	*get_env_value(t_env *env, char *key);
 void    	set_env_value(t_env *env, char *key, char *value);
 void    	remove_env_var(t_env *env, char *key);
 char    	**env_to_array(t_env *env);
+char        **env_to_array_export(t_env *env);
+int         has_env_key(t_env *env, char *key);
 void    	free_env_array(char **env_array);
 t_env   	*create_env_node(char *key, char *value);
 
