@@ -60,7 +60,6 @@ char *extract_quoted_str(char *input, int *i, char quote_char)
     // If no closing quote found, consider it until end of string
     if (!input[end])
     {
-        printf("Warning: unclosed quote\n");
         *i = end;
         return ft_strdup(&input[start]);
     }
@@ -95,7 +94,7 @@ char *extract_word(char *input, int *i)
             end++;
             continue;
         }
-        else if (input[end] == '\"' && !in_single_quotes) // Fixed: check for !in_single_quotes
+        else if (input[end] == '\"' && !in_single_quotes)
         {
             in_double_quotes = !in_double_quotes;
             end++;
@@ -110,7 +109,6 @@ char *extract_word(char *input, int *i)
         end++;
     }
     
-    // If we ended with unclosed quotes, it's still a valid token
     *i = end;
     
     // Extract the word with quotes preserved
@@ -129,6 +127,13 @@ t_token *tokenize_input(char *input)
     t_token *tokens = NULL;
     int i = 0;
     char *token_value;
+
+    if (has_unclosed_quotes(input))
+    {
+        ft_putendl_fd("minishell: syntax error: unclosed quotes", STDERR_FILENO);
+        return NULL;
+    }
+    
     
     while (input[i])
     {
