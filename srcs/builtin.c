@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/10 13:27:23 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/14 10:33:12 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,15 +58,23 @@ int ft_cd(t_command *cmd, t_shell *shell)
 {
     char *path;
     char old_pwd[PATH_MAX];
+    char *pwd_env;
     
     if (!cmd || !cmd->args)
-        return (1);
+        return 1;
     
-    // Save current directory
+    // Try to get current directory, but don't fail immediately if it's not available
     if (getcwd(old_pwd, sizeof(old_pwd)) == NULL)
     {
-        ft_putendl_fd("minishell: cd: error retrieving current directory", STDERR_FILENO);
-        return (1);
+        // Instead of failing, try to get PWD from environment
+        pwd_env = get_env_value(shell->env, "PWD");
+        if (pwd_env)
+            ft_strlcpy(old_pwd, pwd_env, PATH_MAX);
+        else
+        {
+            ft_putendl_fd("minishell: cd: error retrieving current directory", STDERR_FILENO);
+            return 1;
+        }
     }
 
     // Two or more arguments - Error
@@ -89,12 +97,12 @@ int ft_cd(t_command *cmd, t_shell *shell)
             return (1);
         }
     }
-
     // Cd with path beginning by ~/
     else if (cmd->args[1][0] == '~' && cmd->args[1][1] == '/' && cmd->args[1][2] != '\0')
     {
         char *subpath = ft_substr(cmd->args[1], 1, ft_strlen(cmd->args[1]) - 1);
         path = ft_strjoin(get_env_value(shell->env, "HOME"), subpath);
+        free(subpath);
         if (!path)
         {
             ft_putendl_fd("minishell: cd: HOME not set", STDERR_FILENO);
@@ -130,20 +138,67 @@ int ft_cd(t_command *cmd, t_shell *shell)
         ft_putstr_fd(path, STDERR_FILENO);
         ft_putstr_fd(": ", STDERR_FILENO);
         ft_putendl_fd(strerror(errno), STDERR_FILENO);
-        return (1);
+        return 1;
     }
     
-    // Update PWD and OLDPWD in environment
+    // Update OLDPWD in environment
     set_env_value(shell->env, "OLDPWD", old_pwd);
     
-    // Get new PWD
+    // Try to get new PWD
     char new_pwd[PATH_MAX];
     if (getcwd(new_pwd, sizeof(new_pwd)) != NULL)
     {
         set_env_value(shell->env, "PWD", new_pwd);
     }
+    else
+    {
+        // If getcwd fails (likely deleted directory), compute logical path
+        char *new_path;
+        
+        if (path[0] == '/')
+        {
+            // Absolute path
+            new_path = ft_strdup(path);
+        }
+        else
+        {
+            // Relative path, need to compute
+            if (ft_strcmp(path, "..") == 0)
+            {
+                // Go up one directory from PWD
+                char *last_slash = ft_strrchr(old_pwd, '/');
+                if (last_slash == old_pwd)
+                    new_path = ft_strdup("/"); // Root directory
+                else
+                    new_path = ft_substr(old_pwd, 0, last_slash - old_pwd);
+            }
+            else if (ft_strcmp(path, ".") == 0)
+            {
+                // Stay in same directory
+                new_path = ft_strdup(old_pwd);
+            }
+            else
+            {
+                // Append the path to old_pwd
+                if (old_pwd[ft_strlen(old_pwd) - 1] == '/')
+                    new_path = ft_strjoin(old_pwd, path);
+                else
+                {
+                    char *temp = ft_strjoin(old_pwd, "/");
+                    new_path = ft_strjoin(temp, path);
+                    free(temp);
+                }
+            }
+        }
+        
+        if (new_path)
+        {
+            set_env_value(shell->env, "PWD", new_path);
+            free(new_path);
+        }
+    }
     
-    return (0);
+    return 0;
 }
 
 // Print working directory command
