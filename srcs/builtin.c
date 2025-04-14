@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/14 10:55:02 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/14 11:47:37 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -403,11 +403,27 @@ int ft_env(t_shell *shell)
 int ft_exit(t_command *cmd, t_shell *shell)
 {
     int exit_code = 0;
+    int is_piped;
+
+    is_piped = 0;
     
     if (!cmd || !cmd->args)
         return 1;
     
-    ft_putendl_fd("exit", STDOUT_FILENO);
+    t_token *current = cmd->token;
+
+    while (current)
+    {
+        //printf("%d\n", current->type);
+        if (current->type == 1)
+        {    
+            is_piped = 1;
+            break;
+        }
+        current = current->next;
+    }
+    if (!is_piped)
+        ft_putendl_fd("exit", STDOUT_FILENO);
     
     // If there's an argument, use it as exit code
     if (cmd->args[1])

@@ -29,7 +29,7 @@ int count_commands(t_token *tokens)
 }
 
 // Create a new command structure
-t_command *create_command(void)
+t_command *create_command(t_token *tokens)
 {
     t_command *cmd = malloc(sizeof(t_command));
     
@@ -42,6 +42,7 @@ t_command *create_command(void)
     cmd->has_heredoc = 0;      // No heredoc by default
 	cmd->heredoc_count = 0;
     cmd->heredoc_delims = NULL;
+    cmd->token = tokens;
     
     return cmd;
 }
@@ -164,7 +165,7 @@ t_pipeline *parse_tokens(t_token *tokens)
     }
     
     // Initialize first command
-    pipeline->commands[cmd_index] = create_command();
+    pipeline->commands[cmd_index] = create_command(tokens);
     
     // Process tokens
     while (current)
@@ -173,7 +174,7 @@ t_pipeline *parse_tokens(t_token *tokens)
         if (current->type == TOKEN_PIPE)
         {
             cmd_index++;
-            pipeline->commands[cmd_index] = create_command();
+            pipeline->commands[cmd_index] = create_command(tokens);
             current = current->next;
             continue;
         }

@@ -78,6 +78,7 @@ struct s_command
     char			**heredoc_delims;
 	int				heredoc_count;
 	int				has_heredoc;
+    t_token         *token;
 };
 
 struct s_pipeline
