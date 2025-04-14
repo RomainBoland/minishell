@@ -60,13 +60,13 @@ int ft_cd(t_command *cmd, t_shell *shell)
     char old_pwd[PATH_MAX];
     
     if (!cmd || !cmd->args)
-        return 1;
+        return (1);
     
     // Save current directory
     if (getcwd(old_pwd, sizeof(old_pwd)) == NULL)
     {
         ft_putendl_fd("minishell: cd: error retrieving current directory", STDERR_FILENO);
-        return 1;
+        return (1);
     }
 
     // Two or more arguments - Error
@@ -130,7 +130,7 @@ int ft_cd(t_command *cmd, t_shell *shell)
         ft_putstr_fd(path, STDERR_FILENO);
         ft_putstr_fd(": ", STDERR_FILENO);
         ft_putendl_fd(strerror(errno), STDERR_FILENO);
-        return 1;
+        return (1);
     }
     
     // Update PWD and OLDPWD in environment
@@ -143,7 +143,7 @@ int ft_cd(t_command *cmd, t_shell *shell)
         set_env_value(shell->env, "PWD", new_pwd);
     }
     
-    return 0;
+    return (0);
 }
 
 // Print working directory command
@@ -191,14 +191,48 @@ void    bubble_sort(char **env_array)
     }
 }
 
+int is_argument_valid(char *str)
+{
+    int i = 0;
+
+    if (!ft_isalpha(str[0]) && str[0] != '_')
+    {
+        printf("minishell: export: `%s': not a valid identifier\n", str);
+        return (0);
+    }
+    while (str[i] && str[i] != '=')
+    {
+        if (!ft_isalnum(str[i]) && str[i] != '_' && str[i] != '+' )
+        {
+            printf("minishell: export: `%s': not a valid identifier\n", str);
+            return (0);
+        }
+        i++;
+    }
+    return (1);
+}
+
+
+int write_export(t_command *cmd)
+{
+    int i;
+
+    i = 1;
+    while (cmd->args[i])
+    {
+        if (cmd->args[i][0] != '\0')
+            return (0);
+        i++;
+    }
+    return (1);
+}
 
 // Export a variable to the environment
-// _= apparait dans l'export et l'env alors qu'il n'apparait pas dans l'export normalement
-// _= ne prend pas la bonne valeur, il reste bloque a ./minishell
-// faire en sorte que export x donne dans export x et pas x=""
+// Faire export $oui $non $etc
 int ft_export(t_command *cmd, t_shell *shell)
 {
     int i;
+    int error_flag = 0;
     char *equals_sign;
     char    **env_array;
     
@@ -207,37 +241,48 @@ int ft_export(t_command *cmd, t_shell *shell)
     env_array = NULL;
     i = 0;
     // If no arguments, print current environment (sorted)
-    if (!cmd->args[1])
+    // If only empty arguments, print current environment (sorted)
+    // A FAIRE
+    if (!cmd->args[1] || write_export(cmd))
     {
-        env_array = env_to_array(shell->env);
+        env_array = env_to_array_export(shell->env);
         bubble_sort(env_array);
-        
 
         while (env_array[i])
         {
-            printf("%s\n", env_array[i]);
-            // equals_sign = ft_strchr(env_array[i], '=');
-            // ft_putstr_fd("declare -x ", STDOUT_FILENO);
-            // if (equals_sign)
-            // {
-            //     write(1, env_array[i], equals_sign - env_array[i]);
-            //     ft_putstr_fd("=\"", STDOUT_FILENO);
-            //     ft_putstr_fd(equals_sign + 1, STDOUT_FILENO);
-            //     ft_putstr_fd("\"\n", STDOUT_FILENO);
-            // }
-            // else
-            // {
-            //     ft_putstr_fd(env_array[i], STDOUT_FILENO);
-            //     ft_putchar_fd('\n', STDOUT_FILENO);
-            // }
-            i++;        
+            printf("declare -x %s\n", env_array[i]);
+            free(env_array[i]);
+            i++;
         }
-    return (0);
+        free(env_array);
+        return (0);
     }
     
     // Process each argument
     for (i = 1; cmd->args[i]; i++)
     {
+        if (cmd->args[i][0] == '\0')
+            continue;
+        // Fonction qui permet de verifier que l'argument est valide
+        if (!is_argument_valid(cmd->args[i]))
+        {
+            error_flag = 1;
+            continue;
+        }
+        char *plus_equal = ft_strnstr(cmd->args[i], "+=", ft_strlen(cmd->args[i]));
+        if (plus_equal)
+        {
+            // Ajout de valeur à une variable déjà existante
+            *plus_equal = '\0'; // Séparer la clé
+            char *key = cmd->args[i];
+            char *to_append = plus_equal + 2;
+            char *existing = get_env_value(shell->env, key);
+            char *new_val = ft_strjoin(existing ? existing : "", to_append);
+            set_env_value(shell->env, key, new_val);
+            free(new_val);
+            continue;
+        }
+
         // Find equals sign
         equals_sign = ft_strchr(cmd->args[i], '=');
         
@@ -250,14 +295,14 @@ int ft_export(t_command *cmd, t_shell *shell)
         }
         else
         {
-            // If no equals sign, just add to environment with empty value if it doesn't exist
+            // If no equals sign, just add to environment with NULL value if it doesn't exist
             char *value = get_env_value(shell->env, cmd->args[i]);
-            if (!value)
-                set_env_value(shell->env, cmd->args[i], "");
+            if (!value && !has_env_key(shell->env, cmd->args[i]))
+                set_env_value(shell->env, cmd->args[i], NULL);
         }
     }
     
-    return 0;
+    return (error_flag);
 }
 
 // Remove a variable from the environment
@@ -278,6 +323,7 @@ int ft_unset(t_command *cmd, t_shell *shell)
 }
 
 // Print the environment
+// Probleme pour x= qui devrait apparaitre dans l'envi
 int ft_env(t_shell *shell)
 {
     t_env *current = shell->env;
@@ -298,6 +344,7 @@ int ft_env(t_shell *shell)
 }
 
 // Exit the shell
+// faire exit pour plusieurs arguments
 int ft_exit(t_command *cmd, t_shell *shell)
 {
     int exit_code = 0;

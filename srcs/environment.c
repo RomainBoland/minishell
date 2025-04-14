@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   environment.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:49:55 by rboland           #+#    #+#             */
-/*   Updated: 2025/03/26 08:12:41 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/11 16:10:29 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ t_env *create_env_node(char *key, char *value)
         return NULL;
     
     new_node->key = ft_strdup(key);
-    new_node->value = ft_strdup(value ? value : "");
+    new_node->value = value ? ft_strdup(value) : NULL;
     new_node->next = NULL;
     
     return new_node;
@@ -106,7 +106,7 @@ void set_env_value(t_env *env, char *key, char *value)
         {
             // Update existing variable
             free(env->value);
-            env->value = ft_strdup(value ? value : "");
+            env->value = value ? ft_strdup(value) : NULL;
             return;
         }
         prev = env;
@@ -169,6 +169,11 @@ char **env_to_array(t_env *env)
     i = 0;
     while (current)
     {
+        if (current->value == NULL)
+        {
+            current = current->next;
+            continue;
+        }
         env_array[i] = malloc(ft_strlen(current->key) + ft_strlen(current->value) + 2);
         if (!env_array[i])
         {
@@ -190,6 +195,82 @@ char **env_to_array(t_env *env)
     
     env_array[i] = NULL;
     return env_array;
+}
+
+char **env_to_array_export(t_env *env)
+{
+    int count = 0;
+    int i = 0;
+    t_env *current = env;
+    char **env_array;
+    
+    // Compter le nombre de variables
+    while (current)
+    {
+        if (!(ft_strcmp(current->key, "_") == 0 && current->value != NULL))
+            count++;
+        current = current->next;
+    }
+    
+    env_array = malloc(sizeof(char *) * (count + 1));
+    if (!env_array)
+        return NULL;
+    
+    current = env;
+    while (current)
+    {
+
+        if (ft_strcmp(current->key, "_") == 0 && current->value != NULL)
+        {
+            current = current->next;
+            continue;
+        }
+
+        int len = ft_strlen(current->key);
+        if (current->value)
+            len += ft_strlen(current->value) + 4; // = + "" + \0
+        
+        env_array[i] = malloc(len + 1);
+        if (!env_array[i])
+        {
+            while (--i >= 0)
+                free(env_array[i]);
+            free(env_array);
+            return NULL;
+        }
+        
+        if (current->value == NULL)
+        {
+            // Variable déclarée sans valeur explicite
+            ft_strlcpy(env_array[i], current->key, len + 1);
+        }
+        else
+        {
+            // Variable avec valeur (même vide)
+            ft_strlcpy(env_array[i], current->key, len + 1);
+            ft_strlcat(env_array[i], "=\"", len + 1);
+            ft_strlcat(env_array[i], current->value, len + 1);
+            ft_strlcat(env_array[i], "\"", len + 1);
+        }
+        
+        i++;
+        current = current->next;
+    }
+    
+    env_array[i] = NULL;
+    return (env_array);
+}
+
+// Check if an environment variable exists
+int has_env_key(t_env *env, char *key)
+{
+    while (env)
+    {
+        if (ft_strncmp(env->key, key, ft_strlen(key) + 1) == 0)
+            return 1;
+        env = env->next;
+    }
+    return 0;
 }
 
 // Free environment array
