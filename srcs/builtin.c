@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/14 10:33:12 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/14 10:52:57 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,6 +67,7 @@ int ft_cd(t_command *cmd, t_shell *shell)
     if (getcwd(old_pwd, sizeof(old_pwd)) == NULL)
     {
         // Instead of failing, try to get PWD from environment
+        ft_putendl_fd("cd: error retrieving current directory: getcwd: cannot access parent directories: No such file or directory", STDERR_FILENO);
         pwd_env = get_env_value(shell->env, "PWD");
         if (pwd_env)
             ft_strlcpy(old_pwd, pwd_env, PATH_MAX);
@@ -400,6 +401,7 @@ int ft_env(t_shell *shell)
 
 // Exit the shell
 // faire exit pour plusieurs arguments
+// Exit the shell
 int ft_exit(t_command *cmd, t_shell *shell)
 {
     int exit_code = 0;
@@ -412,8 +414,41 @@ int ft_exit(t_command *cmd, t_shell *shell)
     // If there's an argument, use it as exit code
     if (cmd->args[1])
     {
-        // TODO: Add proper numeric validation
-        exit_code = ft_atoi(cmd->args[1]);
+        // Check for numeric argument
+        char *arg = cmd->args[1];
+        int i = 0;
+        int is_numeric = 1;
+        
+        // Check if numeric (allow one leading +/-)
+        if (arg[0] == '+' || arg[0] == '-')
+            i++;
+            
+        while (arg[i])
+        {
+            if (!ft_isdigit(arg[i]))
+            {
+                is_numeric = 0;
+                break;
+            }
+            i++;
+        }
+        
+        if (!is_numeric)
+        {
+            ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
+            ft_putstr_fd(arg, STDERR_FILENO);
+            ft_putendl_fd(": numeric argument required", STDERR_FILENO);
+            exit_code = 2;  // Non-numeric exit arg returns 2
+        }
+        else if (cmd->args[2])  // Check for too many arguments
+        {
+            ft_putendl_fd("minishell: exit: too many arguments", STDERR_FILENO);
+            return 1;  // Don't exit, just return error
+        }
+        else
+        {
+            exit_code = ft_atoi(arg);
+        }
     }
     
     // Free environment variables
