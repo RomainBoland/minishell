@@ -27,3 +27,21 @@ int	ft_strcmp(char *s1, char *s2)
 	}
 	return (s1[i] - s2[i]);
 }
+
+int has_unclosed_quotes(char *input)
+{
+    int i = 0;
+    int in_single_quotes = 0;
+    int in_double_quotes = 0;
+    
+    while (input[i])
+    {
+        if (input[i] == '\'' && !in_double_quotes)
+            in_single_quotes = !in_single_quotes;
+        else if (input[i] == '\"' && !in_single_quotes)
+            in_double_quotes = !in_double_quotes;
+        i++;
+    }
+    
+    return (in_single_quotes || in_double_quotes);
+}

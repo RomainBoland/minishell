@@ -24,10 +24,10 @@ void signal_handler(int signum)
     {
         // Just write a newline and set flag - readline will handle redisplay
         write(STDOUT_FILENO, "\n", 1);
-        rl_on_new_line();
         
         // Only replace line and redisplay if we're in readline context
         if (rl_readline_state & RL_STATE_READCMD) {
+            rl_on_new_line();
             rl_replace_line("", 0);
             rl_redisplay();
         }
@@ -45,18 +45,19 @@ void signal_handler_child(int signum)
 
 void setup_signals(void)
 {
-    struct sigaction sa;
+    struct sigaction sa_int, sa_quit;
     
-    // Initialize the sigaction struct
-    ft_memset(&sa, 0, sizeof(sa));
+    // Initialize the sigaction structs
+    ft_memset(&sa_int, 0, sizeof(sa_int));
+    ft_memset(&sa_quit, 0, sizeof(sa_quit));
     
-    // Setup for interactive mode (parent process)
-    sa.sa_handler = signal_handler;
-    sigaction(SIGINT, &sa, NULL);   // Ctrl+C
+    // Setup SIGINT handler (Ctrl+C)
+    sa_int.sa_handler = signal_handler;
+    sigaction(SIGINT, &sa_int, NULL);
     
     // Ignore SIGQUIT (Ctrl+\) in interactive mode
-    sa.sa_handler = SIG_IGN;
-    sigaction(SIGQUIT, &sa, NULL);  // Ctrl+'\'
+    sa_quit.sa_handler = SIG_IGN;
+    sigaction(SIGQUIT, &sa_quit, NULL);
 }
 
 char *get_prompt(void)

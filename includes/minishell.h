@@ -147,6 +147,7 @@ int     	is_in_dquotes(char *str, int pos);
 // Utils
 char    	*get_prompt(void);
 int			ft_strcmp(char *s1, char *s2);
+int         has_unclosed_quotes(char *input);
 // char    **split_args(char *str);
 // void    free_split(char **split);
 
