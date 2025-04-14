@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/14 10:52:57 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/14 10:55:02 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -400,8 +400,6 @@ int ft_env(t_shell *shell)
 }
 
 // Exit the shell
-// faire exit pour plusieurs arguments
-// Exit the shell
 int ft_exit(t_command *cmd, t_shell *shell)
 {
     int exit_code = 0;
@@ -438,12 +436,12 @@ int ft_exit(t_command *cmd, t_shell *shell)
             ft_putstr_fd("minishell: exit: ", STDERR_FILENO);
             ft_putstr_fd(arg, STDERR_FILENO);
             ft_putendl_fd(": numeric argument required", STDERR_FILENO);
-            exit_code = 2;  // Non-numeric exit arg returns 2
+            exit_code = 2;
         }
-        else if (cmd->args[2])  // Check for too many arguments
+        else if (cmd->args[2])
         {
             ft_putendl_fd("minishell: exit: too many arguments", STDERR_FILENO);
-            return 1;  // Don't exit, just return error
+            return 1;
         }
         else
         {
