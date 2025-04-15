@@ -6,7 +6,7 @@
 /*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:49:55 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/11 16:10:29 by evan-dro         ###   ########.fr       */
+/*   Updated: 2025/04/15 15:51:29 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,18 @@ t_env *create_env_node(char *key, char *value)
     return new_node;
 }
 
+int get_shlvl_from_envp(char **envp)
+{
+    for (int i = 0; envp[i]; i++)
+    {
+        if (ft_strncmp(envp[i], "SHLVL=", 6) == 0)
+            return ft_atoi(envp[i] + 6);
+    }
+    return 0;
+}
+
+
+
 // Initialize environment variables from envp
 t_env *init_env(char **envp)
 {
@@ -36,33 +48,67 @@ t_env *init_env(char **envp)
     t_env *new_node;
     int i;
     char *equals_sign;
+    int is_in_minishell = 0;
+
     
     if (!envp)
         return NULL;
-    
+
     for (i = 0; envp[i]; i++)
     {
+        // Vérifie si on est déjà dans minishell
+        if (ft_strncmp(envp[i], "is_in_minishell=true", 21) == 0)
+            is_in_minishell = 1;
+
+        // Ignore SHLVL, on le gère nous-mêmes
+        if (ft_strncmp(envp[i], "SHLVL=", 6) == 0)
+            continue;
+
         equals_sign = ft_strchr(envp[i], '=');
         if (equals_sign)
         {
-            *equals_sign = '\0';  // Temporarily split the string
+            *equals_sign = '\0';
             new_node = create_env_node(envp[i], equals_sign + 1);
-            *equals_sign = '=';   // Restore the string
-            
+            *equals_sign = '=';
+
             if (!new_node)
                 continue;
-            
+
             if (!env_list)
                 env_list = new_node;
             else
                 current->next = new_node;
-            
+
             current = new_node;
         }
     }
-    
+
+    // Gère SHLVL
+    int shlvl = get_shlvl_from_envp(envp); // Lire la vraie valeur
+    if (is_in_minishell)
+        shlvl++;
+    if (shlvl < 0)
+        shlvl = 0;
+    char shlvl_str[12];
+    sprintf(shlvl_str, "%d", shlvl);
+    new_node = create_env_node("SHLVL", shlvl_str);
+    if (!new_node)
+        return env_list;
+    if (current)
+        current->next = new_node;
+    else
+        env_list = new_node;
+    current = new_node;
+
+    // Ajoute is_in_minishell=true
+    new_node = create_env_node("is_in_minishell", "true");
+    if (!new_node)
+        return env_list;
+    current->next = new_node;
+
     return env_list;
 }
+
 
 // Free all environment variables
 void free_env(t_env *env)
