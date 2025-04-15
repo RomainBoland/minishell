@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execute.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/11 15:38:36 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/15 09:17:54 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -483,6 +483,7 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
 }
 
 // Execute a pipeline of commands
+// Modified version of execute_pipeline in execute.c
 int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
 {
     int i;
@@ -539,22 +540,6 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         }
     }
     
-    // Determine initial input for first command
-    t_redirection *first_input = NULL;
-    if (pipeline->commands[0]->redirections)
-    {
-        t_redirection *temp = pipeline->commands[0]->redirections;
-        while (temp)
-        {
-            if (temp->type == TOKEN_REDIR_IN)
-                first_input = temp;  // Find the last input redirection
-            temp = temp->next;
-        }
-    }
-
-    // Start with standard input or heredoc for first command
-    in_fd = (first_input) ? STDIN_FILENO : heredoc_fds[0];
-    
     // Create initial pipes if needed
     if (pipeline->cmd_count > 1)
     {
@@ -594,11 +579,26 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                 if (pipe(pipefds[1 - active_pipe]) < 0)
                 {
                     perror("pipe");
+                    // Clean up properly
                     for (int j = 0; j < pipeline->cmd_count; j++)
                     {
                         if (heredoc_fds[j] != STDIN_FILENO)
                             close(heredoc_fds[j]);
                     }
+                    
+                    // Close created pipes
+                    if (i > 0)
+                        close(in_fd);
+                    close(pipefds[active_pipe][0]);
+                    close(pipefds[active_pipe][1]);
+                    
+                    // Wait for any already started processes
+                    for (int j = 0; j < i; j++)
+                    {
+                        if (pids[j] > 0)
+                            waitpid(pids[j], NULL, 0);
+                    }
+                    
                     free(pids);
                     free(heredoc_fds);
                     return 1;
@@ -611,11 +611,35 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         if (pid < 0)
         {
             perror("fork");
+            // Similar cleanup as above
             for (int j = 0; j < pipeline->cmd_count; j++)
             {
                 if (heredoc_fds[j] != STDIN_FILENO)
                     close(heredoc_fds[j]);
             }
+            
+            if (i > 0)
+                close(in_fd);
+            
+            if (i < pipeline->cmd_count - 1)
+            {
+                close(pipefds[active_pipe][0]);
+                close(pipefds[active_pipe][1]);
+                
+                if (i < pipeline->cmd_count - 2)
+                {
+                    close(pipefds[1 - active_pipe][0]);
+                    close(pipefds[1 - active_pipe][1]);
+                }
+            }
+            
+            // Wait for any already started processes
+            for (int j = 0; j < i; j++)
+            {
+                if (pids[j] > 0)
+                    waitpid(pids[j], NULL, 0);
+            }
+            
             free(pids);
             free(heredoc_fds);
             return 1;
@@ -623,9 +647,6 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         
         if (pid == 0)  // Child process
         {
-            // Child doesn't need to keep track of pids or heredoc_fds
-            free(pids);
-            
             // Set up signal handlers for child
             signal(SIGINT, SIG_DFL);
             signal(SIGQUIT, SIG_DFL);
@@ -634,55 +655,12 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
             signal(SIGTTOU, SIG_DFL);
             signal(SIGCHLD, SIG_DFL);
             
-            // If not first command, set input from previous pipe
-            if (i > 0)
-            {
-                dup2(in_fd, STDIN_FILENO);
-                close(in_fd);
-            }
-            else if (first_input)
-            {
-                // Handle input file for first command if it exists
-                int fd = open(first_input->file, O_RDONLY);
-                if (fd < 0)
-                {
-                    perror(first_input->file);
-                    exit(1);
-                }
-                dup2(fd, STDIN_FILENO);
-                close(fd);
-            }
-            else if (heredoc_fds[i] != STDIN_FILENO)
-            {
-                // Use heredoc as input if available
-                dup2(heredoc_fds[i], STDIN_FILENO);
-                close(heredoc_fds[i]);
-            }
+            // Child doesn't need to keep track of pids
+            free(pids);
             
-            // Close all heredoc FDs in child
-            for (int j = 0; j < pipeline->cmd_count; j++)
-            {
-                if (heredoc_fds[j] != STDIN_FILENO && heredoc_fds[j] != in_fd)
-                    close(heredoc_fds[j]);
-            }
-            free(heredoc_fds);
-            
-            // If not last command, set output to next pipe
-            if (i < pipeline->cmd_count - 1)
-            {
-                dup2(out_fd, STDOUT_FILENO);
-                close(pipefds[active_pipe][0]);
-                close(pipefds[active_pipe][1]);
-                
-                // Close the other set of pipes if they exist
-                if (i < pipeline->cmd_count - 2)
-                {
-                    close(pipefds[1 - active_pipe][0]);
-                    close(pipefds[1 - active_pipe][1]);
-                }
-            }
-            
-            // Process all redirections for this command in order
+            // IMPORTANT: Each command should handle its own redirections independently
+            // Check for input redirection first
+            int input_from_redir = 0;
             t_redirection *redir = pipeline->commands[i]->redirections;
             while (redir)
             {
@@ -691,13 +669,69 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                     int fd = open(redir->file, O_RDONLY);
                     if (fd < 0)
                     {
+                        // Report error but IMPORTANT: exit with proper status
                         perror(redir->file);
-                        exit(1);
+                        
+                        // Clean up before exiting
+                        for (int j = 0; j < pipeline->cmd_count; j++)
+                            if (heredoc_fds[j] != STDIN_FILENO)
+                                close(heredoc_fds[j]);
+                        free(heredoc_fds);
+                        
+                        if (i > 0 && in_fd != STDIN_FILENO)
+                            close(in_fd);
+                            
+                        if (i < pipeline->cmd_count - 1)
+                        {
+                            close(pipefds[active_pipe][0]);
+                            close(pipefds[active_pipe][1]);
+                            
+                            if (i < pipeline->cmd_count - 2)
+                            {
+                                close(pipefds[1 - active_pipe][0]);
+                                close(pipefds[1 - active_pipe][1]);
+                            }
+                        }
+                        
+                        exit(1); // Exit with error status
                     }
+                    
+                    // Successfully opened input redirection
                     dup2(fd, STDIN_FILENO);
                     close(fd);
+                    input_from_redir = 1;
                 }
-                else if (redir->type == TOKEN_REDIR_OUT)
+                redir = redir->next;
+            }
+            
+            // If no input redirection, use pipe or heredoc
+            if (!input_from_redir)
+            {
+                if (i > 0) // Not the first command
+                {
+                    dup2(in_fd, STDIN_FILENO);
+                    close(in_fd);
+                }
+                else if (heredoc_fds[i] != STDIN_FILENO) // First command with heredoc
+                {
+                    dup2(heredoc_fds[i], STDIN_FILENO);
+                }
+            }
+            
+            // Close all heredoc FDs in child
+            for (int j = 0; j < pipeline->cmd_count; j++)
+            {
+                if (heredoc_fds[j] != STDIN_FILENO)
+                    close(heredoc_fds[j]);
+            }
+            free(heredoc_fds);
+            
+            // Handle output redirections (including pipes)
+            int output_redirected = 0;
+            redir = pipeline->commands[i]->redirections;
+            while (redir)
+            {
+                if (redir->type == TOKEN_REDIR_OUT)
                 {
                     int fd = open(redir->file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
                     if (fd < 0)
@@ -707,6 +741,7 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                     }
                     dup2(fd, STDOUT_FILENO);
                     close(fd);
+                    output_redirected = 1;
                 }
                 else if (redir->type == TOKEN_APPEND)
                 {
@@ -718,28 +753,45 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                     }
                     dup2(fd, STDOUT_FILENO);
                     close(fd);
+                    output_redirected = 1;
                 }
                 redir = redir->next;
+            }
+            
+            // If no output redirection but not last command, connect to pipe
+            if (!output_redirected && i < pipeline->cmd_count - 1)
+            {
+                dup2(out_fd, STDOUT_FILENO);
+            }
+            
+            // Close all pipe file descriptors
+            if (i < pipeline->cmd_count - 1)
+            {
+                close(pipefds[active_pipe][0]);
+                close(pipefds[active_pipe][1]);
+                
+                if (i < pipeline->cmd_count - 2)
+                {
+                    close(pipefds[1 - active_pipe][0]);
+                    close(pipefds[1 - active_pipe][1]);
+                }
             }
             
             // Execute command
             if (is_builtin(pipeline->commands[i]->args[0]))
             {
-                // For built-ins in a pipeline, we still need to exit with the correct status
                 exit(execute_builtin(pipeline->commands[i], shell));
             }
             else
             {
-                // For external commands
                 char *exec_path = find_executable(pipeline->commands[i]->args[0], shell);
                 if (!exec_path)
                 {
                     ft_putstr_fd("minishell: command not found: ", 2);
                     ft_putendl_fd(pipeline->commands[i]->args[0], 2);
-                    exit(127);  // Command not found exit status
+                    exit(127);
                 }
                 
-                // Convert environment to array for execve
                 char **env_array = env_to_array(shell->env);
                 if (!env_array)
                 {
@@ -747,7 +799,6 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
                     exit(1);
                 }
                 
-                // Execute command
                 execve(exec_path, pipeline->commands[i]->args, env_array);
                 
                 // If execve returns, there was an error
@@ -771,23 +822,7 @@ int execute_pipeline(t_pipeline *pipeline, t_shell *shell)
         // Update input for next command
         if (i < pipeline->cmd_count - 1)
         {
-            // Check if next command has input redirection
-            t_redirection *next_input = NULL;
-            t_redirection *temp = pipeline->commands[i+1]->redirections;
-            while (temp)
-            {
-                if (temp->type == TOKEN_REDIR_IN)
-                    next_input = temp;  // Find the last input redirection
-                temp = temp->next;
-            }
-            
-            if (next_input)
-                in_fd = STDIN_FILENO;  // Will be handled in child
-            else if (heredoc_fds[i+1] != STDIN_FILENO)
-                in_fd = heredoc_fds[i+1];  // Use heredoc
-            else
-                in_fd = pipefds[active_pipe][0]; // Use pipe
-                
+            in_fd = pipefds[active_pipe][0]; // Use pipe for next command's input
             active_pipe = 1 - active_pipe;  // Swap to the other pipe set
         }
     }
