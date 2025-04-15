@@ -145,6 +145,11 @@ void    	expand_command_args(t_command *cmd, t_shell *shell);
 void   		expand_pipeline(t_pipeline *pipeline, t_shell *shell);
 int     	is_in_dquotes(char *str, int pos);
 
+// syntax
+int     is_redirection(int token_type);
+int     validate_syntax(t_token *tokens);
+int     check_consecutive_redirections(t_token *tokens);
+
 // Utils
 char    	*get_prompt(void);
 int			ft_strcmp(char *s1, char *s2);
