@@ -304,19 +304,5 @@ void expand_pipeline(t_pipeline *pipeline, t_shell *shell)
             }
             redir = redir->next;
         }
-        
-        // Expand heredoc delimiters if it exists
-        for (int k = 0; k < pipeline->commands[i]->heredoc_count; k++)
-        {
-            if (pipeline->commands[i]->heredoc_delims[k])
-            {
-                expanded = expand_variables(pipeline->commands[i]->heredoc_delims[k], shell);
-                if (expanded)
-                {
-                    free(pipeline->commands[i]->heredoc_delims[k]);
-                    pipeline->commands[i]->heredoc_delims[k] = expanded;
-                }
-            }
-        }
     }
 }
