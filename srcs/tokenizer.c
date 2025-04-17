@@ -155,12 +155,72 @@ t_token *tokenize_input(char *input)
         // Handle input redirection
         if (input[i] == '<')
         {
-            if (input[i + 1] == '<')
+            if (input[i + 1] == '<') // This is a heredoc (<<)
             {
+                // Add heredoc token
                 add_token(&tokens, new_token("<<", TOKEN_HEREDOC, 0));
                 i += 2;
+                
+                // Skip whitespace after << token
+                while (input[i] == ' ' || input[i] == '\t')
+                    i++;
+                
+                // Now check if the delimiter is quoted
+                if (input[i] == '"') // Double-quoted delimiter
+                {
+                    i++; // Skip opening double quote
+                    
+                    // Find the closing quote
+                    int start = i;
+                    while (input[i] && input[i] != '"')
+                        i++;
+                    
+                    // Create delimiter token (without quotes)
+                    char *delim = malloc(i - start + 1);
+                    if (delim)
+                    {
+                        ft_strlcpy(delim, &input[start], i - start + 1);
+                        add_token(&tokens, new_token(delim, TOKEN_WORD, 2)); // 2 = double quoted
+                        free(delim);
+                    }
+                    
+                    if (input[i] == '"')
+                        i++; // Skip closing quote
+                }
+                else if (input[i] == '\'') // Single-quoted delimiter
+                {
+                    i++; // Skip opening single quote
+                    
+                    // Find the closing quote
+                    int start = i;
+                    while (input[i] && input[i] != '\'')
+                        i++;
+                    
+                    // Create delimiter token (without quotes)
+                    char *delim = malloc(i - start + 1);
+                    if (delim)
+                    {
+                        ft_strlcpy(delim, &input[start], i - start + 1);
+                        add_token(&tokens, new_token(delim, TOKEN_WORD, 1)); // 1 = single quoted
+                        free(delim);
+                    }
+                    
+                    if (input[i] == '\'')
+                        i++; // Skip closing quote
+                }
+                else // Unquoted delimiter
+                {
+                    // Use the existing word extraction for unquoted text
+                    char *delim = extract_word(input, &i);
+                    if (delim)
+                    {
+                        add_token(&tokens, new_token(delim, TOKEN_WORD, 0)); // 0 = unquoted
+                        free(delim);
+                    }
+                }
+                continue;
             }
-            else
+            else // This is a regular input redirection (<)
             {
                 add_token(&tokens, new_token("<", TOKEN_REDIR_IN, 0));
                 i++;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   execute.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
+/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/15 09:17:54 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/17 09:51:28 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -86,20 +86,34 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
                 // Only for the last heredoc, save the content
                 if (i == cmd->heredoc_count - 1)
                 {
-                    // Expand variables
-                    char *expanded = expand_variables(line, shell);
-                    if (expanded)
+                    // Check if we should expand variables (only if delimiter wasn't quoted)
+                    if (!cmd->heredoc_quoted[i])
                     {
-                        char *temp = collected_input;
-                        collected_input = ft_strjoin(collected_input, expanded);
-                        free(temp);
-                        temp = collected_input;
-                        collected_input = ft_strjoin(collected_input, "\n");
-                        free(temp);
-                        free(expanded);
+                        // Expand variables
+                        char *expanded = expand_variables(line, shell);
+                        if (expanded)
+                        {
+                            char *temp = collected_input;
+                            collected_input = ft_strjoin(collected_input, expanded);
+                            free(temp);
+                            temp = collected_input;
+                            collected_input = ft_strjoin(collected_input, "\n");
+                            free(temp);
+                            free(expanded);
+                        }
+                        else
+                        {
+                            char *temp = collected_input;
+                            collected_input = ft_strjoin(collected_input, line);
+                            free(temp);
+                            temp = collected_input;
+                            collected_input = ft_strjoin(collected_input, "\n");
+                            free(temp);
+                        }
                     }
                     else
                     {
+                        // Delimiter was quoted, don't expand variables
                         char *temp = collected_input;
                         collected_input = ft_strjoin(collected_input, line);
                         free(temp);

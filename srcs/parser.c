@@ -38,61 +38,84 @@ t_command *create_command(t_token *tokens)
         
     cmd->args = NULL;
     cmd->arg_quoted = NULL;
-    cmd->redirections = NULL;  // Initialize redirections list
-    cmd->has_heredoc = 0;      // No heredoc by default
-	cmd->heredoc_count = 0;
+    cmd->redirections = NULL;
+    cmd->has_heredoc = 0;
+    cmd->heredoc_count = 0;
     cmd->heredoc_delims = NULL;
+    cmd->heredoc_quoted = NULL;
     cmd->token = tokens;
     
     return cmd;
 }
 
-void add_redirection(t_command *cmd, char *file, int type)
+void add_redirection(t_command *cmd, char *file, int type, int quoted_state)
 {
-	t_redirection	*new_redir;
-	t_redirection	*current;
-	char			**new_delim;
+    t_redirection *new_redir;
+    t_redirection *current;
+    char **new_delim;
+    int *new_quoted;
 
-	new_delim = NULL;
-	new_redir = malloc(sizeof(t_redirection));
-	if (!new_redir)
-		return ;
-	
-	new_redir->file = ft_strdup(file);
-	new_redir->type = type;
-	new_redir->next = NULL;
+    new_delim = NULL;
+    new_redir = malloc(sizeof(t_redirection));
+    if (!new_redir)
+        return;
+    
+    new_redir->file = ft_strdup(file);
+    new_redir->type = type;
+    new_redir->quoted = quoted_state; // Store if the heredoc delimiter was quoted
+    new_redir->next = NULL;
 
-	if (!cmd->redirections)
-	{
-		cmd->redirections = new_redir;
-	}
-	else
-	{
-		current = cmd->redirections;
-		while (current->next)
-			current = current->next;
-		current->next = new_redir;
-	}
+    if (!cmd->redirections)
+    {
+        cmd->redirections = new_redir;
+    }
+    else
+    {
+        current = cmd->redirections;
+        while (current->next)
+            current = current->next;
+        current->next = new_redir;
+    }
 
-	if (type == TOKEN_HEREDOC)
-	{
-		cmd->has_heredoc = 1;
+    if (type == TOKEN_HEREDOC)
+    {
+        cmd->has_heredoc = 1;
 
-		new_delim = malloc(sizeof(char *) * (cmd->heredoc_count + 1));
-		if (!new_delim)
-			return ;
-		
-		for (int i = 0; i < cmd->heredoc_count; i++)
-			new_delim[i] = cmd->heredoc_delims[i];
-		
-		new_delim[cmd->heredoc_count] = ft_strdup(file);
+        // Allocate new delimiters array
+        new_delim = malloc(sizeof(char *) * (cmd->heredoc_count + 1));
+        if (!new_delim)
+            return;
+        
+        // Copy existing delimiters
+        for (int i = 0; i < cmd->heredoc_count; i++)
+            new_delim[i] = cmd->heredoc_delims[i];
+        
+        new_delim[cmd->heredoc_count] = ft_strdup(file);
 
-		if (cmd->heredoc_delims)
-			free(cmd->heredoc_delims);
+        // Allocate new quoted state array
+        new_quoted = malloc(sizeof(int) * (cmd->heredoc_count + 1));
+        if (!new_quoted)
+        {
+            free(new_delim);
+            return;
+        }
+        
+        // Copy existing quoted states
+        for (int i = 0; i < cmd->heredoc_count; i++)
+            new_quoted[i] = cmd->heredoc_quoted[i];
+        
+        new_quoted[cmd->heredoc_count] = quoted_state;
 
-		cmd->heredoc_delims = new_delim;
-		cmd->heredoc_count++;
-	}
+        // Replace old arrays
+        if (cmd->heredoc_delims)
+            free(cmd->heredoc_delims);
+        if (cmd->heredoc_quoted)
+            free(cmd->heredoc_quoted);
+
+        cmd->heredoc_delims = new_delim;
+        cmd->heredoc_quoted = new_quoted;
+        cmd->heredoc_count++;
+    }
 }
 
 // Add word to command arguments
@@ -182,31 +205,31 @@ t_pipeline *parse_tokens(t_token *tokens)
 		// Replace the existing redirection handling code with:
 		if (current->type == TOKEN_REDIR_IN && current->next && current->next->type == TOKEN_WORD)
 		{
-			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_IN);
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_IN, current->next->quoted_state);
 			current = current->next->next;  // Skip redirection and filename
 			continue;
 		}
 
 		if (current->type == TOKEN_REDIR_OUT && current->next && current->next->type == TOKEN_WORD)
 		{
-			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_OUT);
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_REDIR_OUT, current->next->quoted_state);
 			current = current->next->next;  // Skip redirection and filename
 			continue;
 		}
 
 		if (current->type == TOKEN_APPEND && current->next && current->next->type == TOKEN_WORD)
 		{
-			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_APPEND);
+			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_APPEND, current->next->quoted_state);
 			current = current->next->next;  // Skip redirection and filename
 			continue;
 		}
 
 		if (current->type == TOKEN_HEREDOC && current->next && current->next->type == TOKEN_WORD)
-		{
-			add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_HEREDOC);
-			current = current->next->next;  // Skip redirection and delimiter
-			continue;
-		}
+        {
+            add_redirection(pipeline->commands[cmd_index], current->next->value, TOKEN_HEREDOC, current->next->quoted_state);
+            current = current->next->next;  // Skip redirection and delimiter
+            continue;
+        }
 				
         // Handle normal words (command and arguments)
         if (current->type == TOKEN_WORD)
@@ -260,6 +283,9 @@ void free_command(t_command *cmd)
 			free(cmd->heredoc_delims[i]);
 		free(cmd->heredoc_delims);
 	}
+
+    if (cmd->heredoc_quoted)
+        free(cmd->heredoc_quoted);
         
     free(cmd);
 }

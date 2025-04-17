@@ -65,9 +65,10 @@ struct s_token
 
 struct s_redirection
 {
-    char *file;
-    int type;  // REDIR_IN, REDIR_OUT, APPEND, HEREDOC
-    struct s_redirection *next;
+    char                    *file;
+    int                     type;  // REDIR_IN, REDIR_OUT, APPEND, HEREDOC
+    int                     quoted;
+    struct s_redirection    *next;
 };
 
 struct s_command
@@ -77,6 +78,7 @@ struct s_command
     t_redirection	*redirections;  // Linked list of redirections
     char			**heredoc_delims;
 	int				heredoc_count;
+    int             *heredoc_quoted;
 	int				has_heredoc;
     t_token         *token;
 };
