@@ -157,6 +157,13 @@ t_token *tokenize_input(char *input)
         {
             if (input[i + 1] == '<') // This is a heredoc (<<)
             {
+                if (input[i + 2] == '<') // More than 2 consecutive < is an error
+                {
+                    ft_putendl_fd("minishell: syntax error near unexpected token `<'", STDERR_FILENO);
+                    free_tokens(tokens);
+                    return NULL;
+                }
+
                 // Add heredoc token
                 add_token(&tokens, new_token("<<", TOKEN_HEREDOC, 0));
                 i += 2;
@@ -233,6 +240,12 @@ t_token *tokenize_input(char *input)
         {
             if (input[i + 1] == '>')
             {
+                if (input[i + 2] == '>')
+                {
+                    ft_putendl_fd("minishell: syntax error near unexpected token `>'", STDERR_FILENO);
+                    free_tokens(tokens);
+                    return NULL;
+                }
                 add_token(&tokens, new_token(">>", TOKEN_APPEND, 0));
                 i += 2;
             }
