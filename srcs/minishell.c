@@ -87,7 +87,11 @@ int main(int argc, char **argv, char **envp)
     char *prompt;
     t_shell shell;
     
-    (void)argc;
+    if (argc != 1)
+    {
+        printf("minishell: %s: Unexpected argument\n", argv[1]);
+        return (1);
+    }
     (void)argv;
     
     shell.env = init_env(envp);

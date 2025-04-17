@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   builtin.c                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
+/*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:14:41 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/14 11:47:37 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/17 16:45:04 by evan-dro         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,12 +114,12 @@ int ft_cd(t_command *cmd, t_shell *shell)
     else if (ft_strncmp(cmd->args[1], "-", 2) == 0)
     {
         path = get_env_value(shell->env, "OLDPWD");
-        printf("%s\n", path);
         if (!path)
         {
             ft_putendl_fd("minishell: cd: OLDPWD not set", STDERR_FILENO);
             return (1);
         }
+        printf("%s\n", path);
     }
     // Cd with wrong option
     else if (cmd->args[1][0] == '-' && cmd->args[1][1] != '\0')
@@ -386,8 +386,8 @@ int ft_env(t_shell *shell)
     
     while (current)
     {
-        // Only print variables that have a value
-        if (current->value && *current->value)
+        // Print variables that have a value, even if it's empty
+        if (current->value != NULL)
         {
             ft_putstr_fd(current->key, STDOUT_FILENO);
             ft_putchar_fd('=', STDOUT_FILENO);
@@ -395,9 +395,10 @@ int ft_env(t_shell *shell)
         }
         current = current->next;
     }
-    
+
     return (0);
 }
+
 
 // Exit the shell
 int ft_exit(t_command *cmd, t_shell *shell)
