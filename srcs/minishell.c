@@ -89,8 +89,8 @@ int main(int argc, char **argv, char **envp)
     
     if (argc != 1)
     {
-        printf("minishell: %s: No such file or directory\n", argv[1]);
-        return (127);
+        printf("minishell: %s: Unexpected argument\n", argv[1]);
+        return (1);
     }
     (void)argv;
     
