@@ -103,10 +103,27 @@ struct s_shell
 };
 
 /****************************************************************
- *							MAIN					    		*
+ *							SIGNAL					    		*
  ****************************************************************/
-//  minishell.c
-void    	process_input(char *input, t_shell *shell);
+//  signal.c
+void    signal_handler(int signum);
+void    setup_signals(void);
+
+/****************************************************************
+ *							PROCESS					    		*
+ ****************************************************************/
+//  process.c
+void	process_input(char *input, t_shell *shell);
+
+//  syntax_validation.c
+int	    validate_syntax(t_token *tokens);
+int	    check_consecutive_redirections(t_token *tokens);
+
+//  validation_utils.c
+int	    is_redirection(int token_type);
+int	    check_pipe_errors(t_token *current, t_token *prev);
+void	print_redir_error(int token_type);
+int	    handle_missing_word_error(t_token *current);
 
 /****************************************************************
  *							TOKENIZER							*
@@ -136,28 +153,26 @@ t_token	*tokenize_input(char *input);
 char	*extract_word(char *input, int *i);
 
 /****************************************************************
- *							SIGNAL					    		*
+ *							EXPAND								*
  ****************************************************************/
-//  signal.c
-void    signal_handler(int signum);
-void    setup_signals(void);
+// expand_variables.c
+char	*process_single_quotes(char *result, char *str, int *i);
+char	*process_char(char *result, char c);
+char	*process_double_quotes(char *result, char *str, int *i, t_shell *shell);
+char	*process_variable(char *result, char *str, int *i, t_shell *shell);
+char	*expand_variables(char *str, t_shell *shell);
 
-/****************************************************************
- *							PROCESS					    		*
- ****************************************************************/
-//  process.c
-void	process_input(char *input, t_shell *shell);
+// expand_utils.c
+int		is_valid_var_char(char c, int first_char);
+char	*extract_var_name(char *str, int *i);
+char	*expand_single_var(char *str, int *i, t_shell *shell);
+int		is_in_dquotes(char *str, int pos);
 
-//  syntax_validation.c
-int	    validate_syntax(t_token *tokens);
-int	    check_consecutive_redirections(t_token *tokens);
-
-//  validation_utils.c
-int	    is_redirection(int token_type);
-int	    check_pipe_errors(t_token *current, t_token *prev);
-void	print_redir_error(int token_type);
-int	    handle_missing_word_error(t_token *current);
-
+// expand_cmd.c
+void	expand_command_args(t_command *cmd, t_shell *shell);
+void	expand_redirections(t_command *cmd, t_shell *shell);
+void	expand_heredoc_delims(t_command *cmd, t_shell *shell);
+void	expand_pipeline(t_pipeline *pipeline, t_shell *shell);
 
 // Parsing functions
 t_pipeline *parse_tokens(t_token *tokens);

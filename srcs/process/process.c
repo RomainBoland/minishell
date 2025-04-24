@@ -28,7 +28,7 @@ static int	validate_input_syntax(t_token *tokens, t_shell *shell)
 static t_pipeline	*parse_input_tokens(t_token *tokens)
 {
 	t_pipeline	*pipeline;
-	
+
 	pipeline = parse_tokens(tokens);
 	if (!pipeline)
 	{
@@ -43,10 +43,9 @@ static t_pipeline	*parse_input_tokens(t_token *tokens)
 static void	execute_input_pipeline(t_pipeline *pipeline, t_shell *shell)
 {
 	int	status;
-	
+
 	status = execute_pipeline(pipeline, shell);
 	shell->last_exit_status = status;
-	
 	setup_signals();
 }
 
@@ -55,22 +54,17 @@ void	process_input(char *input, t_shell *shell)
 {
 	t_token		*tokens;
 	t_pipeline	*pipeline;
-	
+
 	tokens = tokenize_input(input);
 	if (!tokens)
-		return;
-	
+		return ;
 	if (!validate_input_syntax(tokens, shell))
-		return;
-	
+		return ;
 	pipeline = parse_input_tokens(tokens);
 	if (!pipeline)
-		return;
-	
+		return ;
 	expand_pipeline(pipeline, shell);
-	
 	execute_input_pipeline(pipeline, shell);
-	
 	free_tokens(tokens);
 	free_pipeline(pipeline);
 }
