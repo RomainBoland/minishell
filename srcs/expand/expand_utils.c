@@ -87,3 +87,11 @@ int	is_in_dquotes(char *str, int pos)
 	}
 	return (in_dquotes);
 }
+
+/* Helper to handle variable check before processing */
+int	should_expand_var(char *str, int i)
+{
+	return (str[i] == '$' && str[i + 1]
+		&& (ft_isalnum(str[i + 1]) || str[i + 1] == '_'
+			|| str[i + 1] == '?'));
+}

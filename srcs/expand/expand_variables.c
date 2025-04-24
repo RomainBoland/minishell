@@ -5,8 +5,8 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: rboland <rboland@student.s19.be>           +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/04/24 19:25:09 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/24 19:25:09 by rboland          ###   ########.fr       */
+/*   Created: 2025/04/24 19:35:07 by rboland           #+#    #+#             */
+/*   Updated: 2025/04/24 19:35:07 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,15 +50,13 @@ char	*process_char(char *result, char c)
 /* Process content inside double quotes */
 char	*process_double_quotes(char *result, char *str, int *i, t_shell *shell)
 {
-	char	*temp;
 	char	*var_value;
-	char	c[2];
+	char	*temp;
 
 	(*i)++;
 	while (str[*i] && str[*i] != '\"')
 	{
-		if (str[*i] == '$' && str[*i + 1] && 
-			(ft_isalnum(str[*i + 1]) || str[*i + 1] == '_' || str[*i + 1] == '?'))
+		if (should_expand_var(str, *i))
 		{
 			var_value = expand_single_var(str, i, shell);
 			temp = result;
@@ -67,14 +65,7 @@ char	*process_double_quotes(char *result, char *str, int *i, t_shell *shell)
 			free(var_value);
 		}
 		else
-		{
-			c[0] = str[*i];
-			c[1] = '\0';
-			temp = result;
-			result = ft_strjoin(result, c);
-			free(temp);
-			(*i)++;
-		}
+			result = process_dquote_char(result, str[*i], i);
 	}
 	if (str[*i] == '\"')
 		(*i)++;
@@ -111,8 +102,7 @@ char	*expand_variables(char *str, t_shell *shell)
 			result = process_single_quotes(result, str, &i);
 		else if (str[i] == '\"')
 			result = process_double_quotes(result, str, &i, shell);
-		else if (str[i] == '$' && str[i + 1] && 
-				(ft_isalnum(str[i + 1]) || str[i + 1] == '_' || str[i + 1] == '?'))
+		else if (should_expand_var(str, i))
 			result = process_variable(result, str, &i, shell);
 		else
 		{

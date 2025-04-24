@@ -167,12 +167,15 @@ int		is_valid_var_char(char c, int first_char);
 char	*extract_var_name(char *str, int *i);
 char	*expand_single_var(char *str, int *i, t_shell *shell);
 int		is_in_dquotes(char *str, int pos);
+int		should_expand_var(char *str, int i);
 
 // expand_cmd.c
 void	expand_command_args(t_command *cmd, t_shell *shell);
 void	expand_redirections(t_command *cmd, t_shell *shell);
 void	expand_heredoc_delims(t_command *cmd, t_shell *shell);
 void	expand_pipeline(t_pipeline *pipeline, t_shell *shell);
+char	*process_dquote_char(char *result, char c, int *i);
+
 
 // Parsing functions
 t_pipeline *parse_tokens(t_token *tokens);
@@ -206,22 +209,18 @@ int         has_env_key(t_env *env, char *key);
 void    	free_env_array(char **env_array);
 t_env   	*create_env_node(char *key, char *value);
 
-// Environment variable expansion
-char    	*expand_variables(char *str, t_shell *shell);
-void    	expand_command_args(t_command *cmd, t_shell *shell);
-void   		expand_pipeline(t_pipeline *pipeline, t_shell *shell);
-int     	is_in_dquotes(char *str, int pos);
 
 // syntax
 int     is_redirection(int token_type);
 int     validate_syntax(t_token *tokens);
 int     check_consecutive_redirections(t_token *tokens);
 
-// Utils
+/****************************************************************
+ *							UTILS								*
+ ****************************************************************/
+// utils.c
 char    	*get_prompt(void);
 int			ft_strcmp(char *s1, char *s2);
 int         has_unclosed_quotes(char *input);
-// char    **split_args(char *str);
-// void    free_split(char **split);
 
 #endif

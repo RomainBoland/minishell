@@ -98,3 +98,18 @@ void	expand_pipeline(t_pipeline *pipeline, t_shell *shell)
 		i++;
 	}
 }
+
+/* Process a character inside double quotes */
+char	*process_dquote_char(char *result, char c, int *i)
+{
+	char	str[2];
+	char	*temp;
+
+	str[0] = c;
+	str[1] = '\0';
+	temp = result;
+	result = ft_strjoin(result, str);
+	free(temp);
+	(*i)++;
+	return (result);
+}
