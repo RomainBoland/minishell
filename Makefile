@@ -10,7 +10,11 @@ OBJ_DIR = objs
 LIBFT_DIR = libft
 
 SRCS = $(SRC_DIR)/minishell.c \
-       $(SRC_DIR)/tokenizer.c \
+       $(SRC_DIR)/tokenizer/tokenizer.c \
+	   $(SRC_DIR)/tokenizer/tokenizer_utils.c \
+	   $(SRC_DIR)/tokenizer/tokenizer_heredoc.c \
+	   $(SRC_DIR)/tokenizer/tokenize_input.c \
+	   $(SRC_DIR)/tokenizer/extract_word.c \
        $(SRC_DIR)/parser.c \
        $(SRC_DIR)/process.c \
        $(SRC_DIR)/execute.c \
@@ -22,10 +26,7 @@ SRCS = $(SRC_DIR)/minishell.c \
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIBFT = $(LIBFT_DIR)/libft.a
 
-all: libft_make $(OBJ_DIR) $(NAME)
-
-$(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+all: libft_make $(NAME)
 
 libft_make:
 	$(MAKE) -C $(LIBFT_DIR)
@@ -33,7 +34,9 @@ libft_make:
 $(NAME): $(OBJS) $(LIBFT)
 	$(CC) $(CFLAGS) -o $(NAME) $(OBJS) $(LIBFT) $(LDFLAGS)
 
+# Compilation des .o en créant les dossiers si besoin
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

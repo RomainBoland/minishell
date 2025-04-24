@@ -107,6 +107,34 @@ void    	process_input(char *input, t_shell *shell);
 void    	signal_handler(int signum);
 void    	setup_signals(void);
 
+/****************************************************************
+ *							TOKENIZER							*
+ ****************************************************************/
+//      tokenizer.c
+char	*extract_quoted_str(char *input, int *i, char quote_char);
+void	add_token(t_token **tokens, t_token *new);
+t_token	*new_token(char *value, int type, int quoted_state);
+
+//      tokenizer_utils.c
+void	process_pipe_token(t_token **tokens, int *i);
+void	process_input_redir(t_token **tokens, char *input, int *i);
+void	process_output_redir(t_token **tokens, char *input, int *i);
+void	process_quoted_heredoc(t_token **tokens, char *input, int *i, int quote_type);
+void	process_unquoted_heredoc(t_token **tokens, char *input, int *i);
+
+//      tokenizer_heredoc.c
+void	skip_whitespace(char *input, int *i);
+void	process_heredoc(t_token **tokens, char *input, int *i);
+void	process_word_token(t_token **tokens, char *input, int *i);
+void	free_tokens(t_token *tokens);
+
+//      tokenize_input.c
+t_token	*tokenize_input(char *input);
+
+//      extract_word.c
+char	*extract_word(char *input, int *i);
+
+
 // Parsing functions
 t_token 	*tokenize_input(char *input);
 void		free_tokens(t_token *tokens);
