@@ -10,18 +10,22 @@ OBJ_DIR = objs
 LIBFT_DIR = libft
 
 SRCS = $(SRC_DIR)/minishell.c \
+	   $(SRC_DIR)/signal/signal.c \
        $(SRC_DIR)/tokenizer/tokenizer.c \
 	   $(SRC_DIR)/tokenizer/tokenizer_utils.c \
 	   $(SRC_DIR)/tokenizer/tokenizer_heredoc.c \
 	   $(SRC_DIR)/tokenizer/tokenize_input.c \
 	   $(SRC_DIR)/tokenizer/extract_word.c \
+	   $(SRC_DIR)/utils/utils.c \
+	   $(SRC_DIR)/process/process.c \
+	   $(SRC_DIR)/process/syntax_validation.c \
+	   $(SRC_DIR)/process/validation_utils.c \
        $(SRC_DIR)/parser.c \
-       $(SRC_DIR)/process.c \
        $(SRC_DIR)/execute.c \
        $(SRC_DIR)/builtin.c \
 	   $(SRC_DIR)/environment.c \
 	   $(SRC_DIR)/expand.c	\
-	   $(SRC_DIR)/utils.c
+
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIBFT = $(LIBFT_DIR)/libft.a

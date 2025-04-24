@@ -43,7 +43,7 @@
 # define EXIT_NOT_EXECUTABLE 126
 # define EXIT_NOT_FOUND 127
 
-// Global signal variable - this is the only global we're allowed to use
+// Global signal variable
 extern volatile sig_atomic_t g_signal;
 
 // Forward declarations
@@ -102,10 +102,11 @@ struct s_shell
     int     last_exit_status; // Exit status of last command
 };
 
-// Main functions
+/****************************************************************
+ *							MAIN					    		*
+ ****************************************************************/
+//  minishell.c
 void    	process_input(char *input, t_shell *shell);
-void    	signal_handler(int signum);
-void    	setup_signals(void);
 
 /****************************************************************
  *							TOKENIZER							*
@@ -134,10 +135,31 @@ t_token	*tokenize_input(char *input);
 //      extract_word.c
 char	*extract_word(char *input, int *i);
 
+/****************************************************************
+ *							SIGNAL					    		*
+ ****************************************************************/
+//  signal.c
+void    signal_handler(int signum);
+void    setup_signals(void);
+
+/****************************************************************
+ *							PROCESS					    		*
+ ****************************************************************/
+//  process.c
+void	process_input(char *input, t_shell *shell);
+
+//  syntax_validation.c
+int	    validate_syntax(t_token *tokens);
+int	    check_consecutive_redirections(t_token *tokens);
+
+//  validation_utils.c
+int	    is_redirection(int token_type);
+int	    check_pipe_errors(t_token *current, t_token *prev);
+void	print_redir_error(int token_type);
+int	    handle_missing_word_error(t_token *current);
+
 
 // Parsing functions
-t_token 	*tokenize_input(char *input);
-void		free_tokens(t_token *tokens);
 t_pipeline *parse_tokens(t_token *tokens);
 void    	free_pipeline(t_pipeline *pipeline);
 
