@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   environment.c                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: evan-dro <evan-dro@student.42.fr>          +#+  +:+       +#+        */
+/*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:49:55 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/17 16:52:19 by evan-dro         ###   ########.fr       */
+/*   Updated: 2025/04/24 09:43:12 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -38,9 +38,6 @@ int get_shlvl_from_envp(char **envp)
     return 0;
 }
 
-
-
-// Initialize environment variables from envp
 t_env *init_env(char **envp)
 {
     t_env *env_list = NULL;
@@ -49,19 +46,25 @@ t_env *init_env(char **envp)
     int i;
     char *equals_sign;
     int is_in_minishell = 0;
-
     
     if (!envp)
         return NULL;
 
+    // First check if we're already in minishell and get the nesting level
     for (i = 0; envp[i]; i++)
     {
-        // Vérifie si on est déjà dans minishell
-        if (ft_strncmp(envp[i], "is_in_minishell=true", 21) == 0)
-            is_in_minishell = 1;
+        if (ft_strncmp(envp[i], "is_in_minishell=", 16) == 0)
+        {
+            is_in_minishell = atoi(envp[i] + 16);
+        }
+    }
 
-        // Ignore SHLVL, on le gère nous-mêmes
-        if (ft_strncmp(envp[i], "SHLVL=", 6) == 0)
+    // Process all environment variables except SHLVL and is_in_minishell
+    for (i = 0; envp[i]; i++)
+    {
+        // Skip these variables as we'll handle them separately
+        if (ft_strncmp(envp[i], "SHLVL=", 6) == 0 || 
+            ft_strncmp(envp[i], "is_in_minishell=", 16) == 0)
             continue;
 
         equals_sign = ft_strchr(envp[i], '=');
@@ -83,32 +86,42 @@ t_env *init_env(char **envp)
         }
     }
 
-    // Gère SHLVL
-    int shlvl = get_shlvl_from_envp(envp); // Lire la vraie valeur
+    // Handle SHLVL
+    int shlvl = get_shlvl_from_envp(envp);
     if (is_in_minishell)
         shlvl++;
     if (shlvl < 0)
         shlvl = 0;
+    
     char shlvl_str[12];
     sprintf(shlvl_str, "%d", shlvl);
+    
     new_node = create_env_node("SHLVL", shlvl_str);
     if (!new_node)
         return env_list;
+    
     if (current)
         current->next = new_node;
     else
         env_list = new_node;
+    
     current = new_node;
 
-    // Ajoute is_in_minishell=true
-    new_node = create_env_node("is_in_minishell", "true");
+    // Increment and add is_in_minishell
+    is_in_minishell++;
+    
+    char nested_level_str[12];
+    sprintf(nested_level_str, "%d", is_in_minishell);
+    
+    new_node = create_env_node("is_in_minishell", nested_level_str);
     if (!new_node)
         return env_list;
+    
     current->next = new_node;
+    current = new_node;
 
     return env_list;
 }
-
 
 // Free all environment variables
 void free_env(t_env *env)

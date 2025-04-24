@@ -6,7 +6,7 @@
 /*   By: rboland <romain.boland@hotmail.com>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/19 11:05:20 by rboland           #+#    #+#             */
-/*   Updated: 2025/04/17 09:51:28 by rboland          ###   ########.fr       */
+/*   Updated: 2025/04/24 09:52:00 by rboland          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -155,10 +155,7 @@ int setup_heredoc(t_command *cmd, t_shell *shell)
             // If child was terminated by SIGINT (Ctrl+C)
             if (WTERMSIG(status) == SIGINT)
             {
-                // The child received SIGINT, which will have automatically
-                // displayed ^C in the terminal. We just need to ensure a newline.
-                ft_putchar_fd('\n', STDOUT_FILENO);
-                
+                // Let ^C display on its own without adding newline
                 // Make sure readline is in a good state
                 rl_on_new_line();
             }
@@ -343,6 +340,7 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
 {
     int status;
     int heredoc_fd = STDIN_FILENO;
+    pid_t pid;
     
     // Handle empty command
     if (!cmd || !cmd->args || !cmd->args[0])
@@ -355,22 +353,20 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         if (heredoc_fd < 0)
             return 1;  // Heredoc setup failed or was interrupted
         
-			int has_input_redirection = 0;
-			t_redirection *redir = cmd->redirections;
-			while (redir)
-			{
-				if (redir->type == TOKEN_REDIR_IN)
-				{
-					has_input_redirection = 1;
-					break;
-				}
-				redir = redir->next;
-			}
-			if (!has_input_redirection)
-            	in_fd = heredoc_fd;
+        int has_input_redirection = 0;
+        t_redirection *redir = cmd->redirections;
+        while (redir)
+        {
+            if (redir->type == TOKEN_REDIR_IN)
+            {
+                has_input_redirection = 1;
+                break;
+            }
+            redir = redir->next;
+        }
+        if (!has_input_redirection)
+            in_fd = heredoc_fd;
     }
-    
-    // The rest of your execute_command function remains the same...
     
     // Check if it's a built-in command
     if (is_builtin(cmd->args[0]))
@@ -408,10 +404,6 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
     }
     else
     {
-        // This will only be called for a single external command
-        // Fork and execute
-        pid_t pid;
-        
         // Find executable path
         char *exec_path = find_executable(cmd->args[0], shell);
         if (!exec_path)
@@ -436,13 +428,27 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         
         if (pid == 0)  // Child process
         {
-            // Set up signal handlers for child
-            signal(SIGINT, SIG_DFL);
-            signal(SIGQUIT, SIG_DFL);
-            signal(SIGTSTP, SIG_DFL);
-            signal(SIGTTIN, SIG_DFL);
-            signal(SIGTTOU, SIG_DFL);
-            signal(SIGCHLD, SIG_DFL);
+            // Special handling for nested minishell
+            if (cmd->args[0] && ft_strcmp(cmd->args[0], "./minishell") == 0)
+            {
+                // For nested minishell, we need special signal handling
+                signal(SIGINT, SIG_DFL);
+                signal(SIGQUIT, SIG_DFL);
+                
+                // Create a new process group for the nested shell
+                // This helps with signal handling
+                setpgid(0, 0);
+            }
+            else
+            {
+                // Normal signal handlers for other commands
+                signal(SIGINT, SIG_DFL);
+                signal(SIGQUIT, SIG_DFL);
+                signal(SIGTSTP, SIG_DFL);
+                signal(SIGTTIN, SIG_DFL);
+                signal(SIGTTOU, SIG_DFL);
+                signal(SIGCHLD, SIG_DFL);
+            }
             
             // Set up redirections
             if (!setup_redirections(cmd, in_fd, out_fd))
@@ -480,12 +486,27 @@ int execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
         // Parent process
         free(exec_path);
         
+        // Special handling for parent of nested minishell
+        if (cmd->args[0] && ft_strcmp(cmd->args[0], "./minishell") == 0)
+        {
+            // For nested minishell, make it the foreground process group
+            // This ensures signals sent to the terminal go to the nested shell
+            setpgid(pid, pid);
+            tcsetpgrp(STDIN_FILENO, pid);
+        }
+        
         // Close heredoc fd in parent since it's duplicated in child
         if (heredoc_fd != STDIN_FILENO)
             close(heredoc_fd);
         
         // Wait for child to finish
         waitpid(pid, &status, 0);
+        
+        // If we gave terminal control to a nested minishell, take it back
+        if (cmd->args[0] && ft_strcmp(cmd->args[0], "./minishell") == 0)
+        {
+            tcsetpgrp(STDIN_FILENO, getpgrp());
+        }
         
         if (WIFEXITED(status))
             return WEXITSTATUS(status);
