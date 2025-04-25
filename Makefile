@@ -21,12 +21,22 @@ SRCS = $(SRC_DIR)/minishell.c \
 	   $(SRC_DIR)/process/syntax_validation.c \
 	   $(SRC_DIR)/process/validation_utils.c \
        $(SRC_DIR)/parser/parser.c \
-       $(SRC_DIR)/execute.c \
        $(SRC_DIR)/builtin.c \
 	   $(SRC_DIR)/environment.c \
 	   $(SRC_DIR)/expand/expand_variables.c	\
 	   $(SRC_DIR)/expand/expand_utils.c \
-	   $(SRC_DIR)/expand/expand_cmd.c
+	   $(SRC_DIR)/expand/expand_cmd.c \
+	   $(SRC_DIR)/execute/execute_core.c \
+	   $(SRC_DIR)/execute/execute_setup.c \
+	   $(SRC_DIR)/execute/execute_heredoc.c \
+	   $(SRC_DIR)/execute/execute_redirect.c \
+	   $(SRC_DIR)/execute/execute_process.c \
+	   $(SRC_DIR)/execute/execute_process_utils.c \
+	   $(SRC_DIR)/execute/execute_pipeline.c \
+	   $(SRC_DIR)/execute/execute_pipeline_utils.c \
+	   $(SRC_DIR)/execute/execute_pipeline_process.c \
+	   $(SRC_DIR)/execute/execute_pipeline_process2.c \
+	   $(SRC_DIR)/execute/execute_pipeline_wait.c \
 
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
