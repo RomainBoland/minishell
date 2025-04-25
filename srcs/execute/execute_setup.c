@@ -13,7 +13,8 @@
 #include "../includes/minishell.h"
 
 /* Save and restore signal handlers for heredoc */
-void	handle_heredoc_signals(struct sigaction *old_int, struct sigaction *old_quit)
+void	handle_heredoc_signals(struct sigaction *old_int, 
+							struct sigaction *old_quit)
 {
 	struct sigaction	sa_int;
 	struct sigaction	sa_quit;
@@ -38,43 +39,53 @@ void	setup_child_signals(void)
 	sigaction(SIGINT, &sa_child_int, NULL);
 }
 
-/* Process heredoc lines */
-void	process_heredoc_lines(t_command *cmd, int pipe_fd[2], t_shell *shell)
+/* Process heredoc content for a single delimiter */
+char	*process_heredoc_content(char *delimiter, int quoted, t_shell *shell)
 {
 	char	*line;
+	char	*collected_input;
+
+	collected_input = ft_strdup("");
+	while (1)
+	{
+		write(STDOUT_FILENO, "> ", 2);
+		line = readline("");
+		if (!line || ft_strcmp(line, delimiter) == 0)
+		{
+			free(line);
+			break ;
+		}
+		collected_input = append_heredoc_line(collected_input, line, 
+			quoted, shell);
+		free(line);
+	}
+	return (collected_input);
+}
+
+/* Process heredoc lines for all delimiters */
+void	process_heredoc_lines(t_command *cmd, int pipe_fd[2], t_shell *shell)
+{
 	int		i;
+	char	*content;
 	
 	close(pipe_fd[0]);
-	for (i = 0; i < cmd->heredoc_count; i++)
+	i = 0;
+	while (i < cmd->heredoc_count)
 	{
-		char *collected_input = ft_strdup("");
-		while (1)
-		{
-			write(STDOUT_FILENO, "> ", 2);
-			line = readline("");
-			if (!line || ft_strcmp(line, cmd->heredoc_delims[i]) == 0)
-			{
-				free(line);
-				break;
-			}
-			if (i == cmd->heredoc_count - 1)
-			{
-				collected_input = append_heredoc_line(collected_input, line, 
-					cmd->heredoc_quoted[i], shell);
-			}
-			free(line);
-		}
+		content = process_heredoc_content(cmd->heredoc_delims[i], 
+			cmd->heredoc_quoted[i], shell);
 		if (i == cmd->heredoc_count - 1)
-			write(pipe_fd[1], collected_input, ft_strlen(collected_input));
-		
-		free(collected_input);
+			write(pipe_fd[1], content, ft_strlen(content));
+		free(content);
+		i++;
 	}
 	close(pipe_fd[1]);
 	exit(0);
 }
 
 /* Append line to heredoc collected input */
-char	*append_heredoc_line(char *collected, char *line, int quoted, t_shell *shell)
+char	*append_heredoc_line(char *collected, char *line, int quoted, 
+					t_shell *shell)
 {
 	char	*expanded;
 	char	*temp;

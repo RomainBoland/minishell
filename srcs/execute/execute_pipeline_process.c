@@ -46,7 +46,7 @@ void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
 	free(heredoc_fds);
 
 	handle_child_redirections(pipeline, i, in_fd, out_fd, heredoc_fds);
-	close_child_pipes(pipeline->cmd_count, i);
+	/* We need to skip the close_unused_pipes call since we don't have pipe information here */
 	execute_child_process(pipeline, shell, i);
 }
 

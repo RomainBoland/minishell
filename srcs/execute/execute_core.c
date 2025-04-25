@@ -56,7 +56,6 @@ char	*find_executable(char *cmd, t_shell *shell)
 	char	*path;
 	char	**paths;
 	char	*exec_path;
-	int		i;
 
 	if (ft_strchr(cmd, '/'))
 	{
@@ -70,6 +69,17 @@ char	*find_executable(char *cmd, t_shell *shell)
 	paths = ft_split(path, ':');
 	if (!paths)
 		return (NULL);
+	exec_path = search_paths(paths, cmd);
+	free_paths(paths);
+	return (exec_path);
+}
+
+/* Search executable in path directories */
+char	*search_paths(char **paths, char *cmd)
+{
+	int		i;
+	char	*exec_path;
+
 	i = 0;
 	exec_path = NULL;
 	while (paths[i])
@@ -79,7 +89,6 @@ char	*find_executable(char *cmd, t_shell *shell)
 			break ;
 		i++;
 	}
-	free_paths(paths);
 	return (exec_path);
 }
 
@@ -96,15 +105,4 @@ char	*find_exec_in_path(char *path_dir, char *cmd)
 		return (full_path);
 	free(full_path);
 	return (NULL);
-}
-
-/* Free paths array */
-void	free_paths(char **paths)
-{
-	int	i;
-
-	i = 0;
-	while (paths[i])
-		free(paths[i++]);
-	free(paths);
 }

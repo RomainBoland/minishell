@@ -37,6 +37,8 @@ SRCS = $(SRC_DIR)/minishell.c \
 	   $(SRC_DIR)/execute/execute_pipeline_process.c \
 	   $(SRC_DIR)/execute/execute_pipeline_process2.c \
 	   $(SRC_DIR)/execute/execute_pipeline_wait.c \
+	   $(SRC_DIR)/execute/execute_path_utils.c \
+	   $(SRC_DIR)/execute/execute_pipeline_cmd.c
 
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)

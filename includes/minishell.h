@@ -102,13 +102,18 @@ struct s_shell
     int     last_exit_status; // Exit status of last command
 };
 
-/* ---- minishell.c ---- */
-void	process_input(char *input, t_shell *shell);
+/****************************************************************
+ * 							UTILS								*
+ ****************************************************************/
 
 /* ---- utils.c ---- */
 char	*get_prompt(void);
 int		ft_strcmp(char *s1, char *s2);
 int		has_unclosed_quotes(char *input);
+
+/****************************************************************
+ * 							ENVIRONMENT							*
+ ****************************************************************/
 
 /* ---- environment.c ---- */
 t_env	*init_env(char **envp);
@@ -121,6 +126,10 @@ void	free_env_array(char **env_array);
 int		has_env_key(t_env *env, char *key);
 char	**env_to_array_export(t_env *env);
 
+/****************************************************************
+ * 							BUILTIN								*
+ ****************************************************************/
+
 /* ---- builtin.c ---- */
 int		ft_echo(t_command *cmd);
 int		ft_cd(t_command *cmd, t_shell *shell);
@@ -129,6 +138,10 @@ int		ft_export(t_command *cmd, t_shell *shell);
 int		ft_unset(t_command *cmd, t_shell *shell);
 int		ft_env(t_shell *shell);
 int		ft_exit(t_command *cmd, t_shell *shell);
+
+/****************************************************************
+ * 							TOKENIZER							*
+ ****************************************************************/
 
 /* ---- tokenizer.c ---- */
 t_token	*new_token(char *value, int type, int quoted_state);
@@ -154,6 +167,13 @@ char	*extract_word(char *input, int *i);
 /* ---- tokenize_input.c ---- */
 t_token	*tokenize_input(char *input);
 
+/****************************************************************
+ * 							PROCESS								*
+ ****************************************************************/
+
+ /* ---- process.c ---- */
+ void	process_input(char *input, t_shell *shell);
+
 /* ---- syntax_validation.c ---- */
 int		validate_syntax(t_token *tokens);
 int		check_consecutive_redirections(t_token *tokens);
@@ -164,9 +184,17 @@ int		check_pipe_errors(t_token *current, t_token *prev);
 void	print_redir_error(int token_type);
 int		handle_missing_word_error(t_token *current);
 
+/****************************************************************
+ * 							PARSER								*
+ ****************************************************************/
+
 /* ---- parser.c ---- */
 t_pipeline	*parse_tokens(t_token *tokens);
 void		free_pipeline(t_pipeline *pipeline);
+
+/****************************************************************
+ * 							EXPAND								*
+ ****************************************************************/
 
 /* ---- expand_variables.c ---- */
 char	*expand_variables(char *str, t_shell *shell);
@@ -185,40 +213,56 @@ void	expand_heredoc_delims(t_command *cmd, t_shell *shell);
 void	expand_pipeline(t_pipeline *pipeline, t_shell *shell);
 char	*process_dquote_char(char *result, char c, int *i);
 
+/****************************************************************
+ * 							SIGNAL								*
+ ****************************************************************/
+
 /* ---- signal.c ---- */
 void	setup_signals(void);
+
+/****************************************************************
+ * 							EXECUTE								*
+ ****************************************************************/
 
 /* ---- execute_core.c ---- */
 int		is_builtin(char *cmd);
 int		execute_builtin(t_command *cmd, t_shell *shell);
 char	*find_executable(char *cmd, t_shell *shell);
+char	*search_paths(char **paths, char *cmd);
 char	*find_exec_in_path(char *path_dir, char *cmd);
+
+/* ---- execute_path_utils.c ---- */
 void	free_paths(char **paths);
+void	execute_pipeline_command_child(t_pipeline *pipeline, t_shell *shell,
+			int i, int *heredoc_fds);
+void	execute_command_by_type(t_command *cmd, t_shell *shell);
+void	print_cmd_not_found(char *cmd);
 
 /* ---- execute_setup.c ---- */
 void	handle_heredoc_signals(struct sigaction *old_int, 
-		struct sigaction *old_quit);
+			struct sigaction *old_quit);
 void	setup_child_signals(void);
+char	*process_heredoc_content(char *delimiter, int quoted, t_shell *shell);
 void	process_heredoc_lines(t_command *cmd, int pipe_fd[2], t_shell *shell);
 char	*append_heredoc_line(char *collected, char *line, int quoted, 
-		t_shell *shell);
+			t_shell *shell);
 
 /* ---- execute_heredoc.c ---- */
 int		setup_heredoc(t_command *cmd, t_shell *shell);
 int		handle_heredoc_fork_error(int pipe_fd[2], struct sigaction *old_int, 
-		struct sigaction *old_quit);
+			struct sigaction *old_quit);
 int		handle_heredoc_parent(pid_t pid, int pipe_fd[2], 
-		struct sigaction *old_int, struct sigaction *old_quit);
+			struct sigaction *old_int, struct sigaction *old_quit);
 int		execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell);
 int		handle_command_heredoc(t_command *cmd, t_shell *shell);
 
 /* ---- execute_redirect.c ---- */
 int		update_input_fd(t_command *cmd, int in_fd, int heredoc_fd);
 int		execute_builtin_with_redirects(t_command *cmd, int in_fd, 
-		int out_fd, t_shell *shell);
+			int out_fd, t_shell *shell);
 void	restore_std_fds(int stdin_copy, int stdout_copy);
 int		execute_external_command(t_command *cmd, int in_fd, int out_fd, 
-		t_shell *shell, int heredoc_fd);
+			t_shell *shell, int heredoc_fd);
 int		setup_redirections(t_command *cmd, int in_fd, int out_fd);
 
 /* ---- execute_process.c ---- */
@@ -227,54 +271,63 @@ int		setup_cmd_redirections(t_command *cmd);
 int		setup_input_redir(t_redirection *redir);
 int		setup_output_redir(t_redirection *redir, int mode);
 void	child_process(t_command *cmd, int in_fd, int out_fd, 
-		char *exec_path, t_shell *shell);
+			char *exec_path, t_shell *shell);
 
 /* ---- execute_process_utils.c ---- */
 void	setup_child_process_signals(t_command *cmd);
 void	close_unneeded_fds(int in_fd, int out_fd);
 void	execute_child_command(t_command *cmd, char *exec_path, t_shell *shell);
 int		parent_process(pid_t pid, char *exec_path, t_command *cmd, 
-		int heredoc_fd);
+			int heredoc_fd);
 void	handle_minishell_parent(t_command *cmd, pid_t pid);
 void	restore_after_minishell(t_command *cmd);
 
 /* ---- execute_pipeline.c ---- */
-int		execute_pipeline(t_pipeline *pipeline, t_shell *shell);
+int		prepare_pipeline_resources(t_pipeline *pipeline, pid_t **pids, 
+			int **heredoc_fds);
 int		is_single_builtin(t_pipeline *pipeline);
+int		execute_pipeline(t_pipeline *pipeline, t_shell *shell);
 int		setup_heredocs(t_pipeline *pipeline, t_shell *shell, int *heredoc_fds);
 void	cleanup_heredocs(int *heredoc_fds, int count);
+
+/* ---- execute_pipeline_cmd.c ---- */
+int		init_pipeline_pipe(t_pipeline *pipeline, int pipefds[2][2]);
+int		setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2], 
+			int active_pipe);
 int		execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
-		pid_t *pids, int *heredoc_fds);
+			pid_t *pids, int *heredoc_fds);
+int		execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i, 
+			int *active_pipe, int pipefds[2][2], int in_fd, 
+			pid_t *pids, int *heredoc_fds);
+int		execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell, int i, 
+			int in_fd, int out_fd, int active_pipe, int pipefds[2][2], 
+			pid_t *pids, int *heredoc_fds);
 
 /* ---- execute_pipeline_utils.c ---- */
 int		handle_pipe_error(int *heredoc_fds, int cmd_count);
-int		execute_pipeline_command(t_pipeline *pipeline, t_shell *shell, 
-		int i, int *active_pipe, int pipefds[2][2], int in_fd, 
-		pid_t *pids, int *heredoc_fds);
+int		handle_pipe_iter_error(t_pipeline *pipeline, int i, int in_fd,
+			int pipefds[2][2], int active_pipe, int *heredoc_fds, pid_t *pids);
 void	close_unused_pipes(t_pipeline *pipeline, int i, int active_pipe, 
-		int pipefds[2][2]);
+			int pipefds[2][2]);
 void	setup_pipe_redirects(int in_fd, int out_fd);
-void	execute_pipeline_command_child(t_pipeline *pipeline, t_shell *shell,
-		int i, int *heredoc_fds);
 void	handle_parent_pipes_fixed(int i, int in_fd, int active_pipe,
-		int pipefds[2][2], t_pipeline *pipeline);
+			int pipefds[2][2], t_pipeline *pipeline);
 
 /* ---- execute_pipeline_process.c ---- */
 pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell, int i,
-		int in_fd, int out_fd, int *heredoc_fds);
+			int in_fd, int out_fd, int *heredoc_fds);
 void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
-		int in_fd, int out_fd, int *heredoc_fds);
+			int in_fd, int out_fd, int *heredoc_fds);
 void	handle_child_redirections(t_pipeline *pipeline, int i, int in_fd,
-		int out_fd, int *heredoc_fds);
+			int out_fd, int *heredoc_fds);
 int		handle_input_redirections(t_command *cmd);
 void	setup_command_input(int i, int in_fd, int *heredoc_fds);
 
 /* ---- execute_pipeline_process2.c ---- */
+int		process_out_redir(t_redirection *redir);
+int		process_append_redir(t_redirection *redir);
 void	handle_output_redirections(t_command *cmd, int out_fd);
-void	close_child_pipes(int cmd_count, int i);
 void	execute_child_process(t_pipeline *pipeline, t_shell *shell, int i);
-void	handle_parent_pipes(int i, int in_fd, int active_pipe,
-		int pipefds[2][2], t_pipeline *pipeline);
 void	wait_for_processes(pid_t *pids, int count);
 
 /* ---- execute_pipeline_wait.c ---- */
