@@ -13,7 +13,7 @@
 #include "../includes/minishell.h"
 
 /* Prepare pipeline resources */
-int	prepare_pipeline_resources(t_pipeline *pipeline, pid_t **pids, 
+int	prepare_pipeline_resources(t_pipeline *pipeline, pid_t **pids,
 							int **heredoc_fds)
 {
 	*pids = malloc(sizeof(pid_t) * pipeline->cmd_count);
@@ -44,7 +44,7 @@ int	execute_pipeline(t_pipeline *pipeline, t_shell *shell)
 	if (!pipeline || pipeline->cmd_count == 0)
 		return (1);
 	if (is_single_builtin(pipeline))
-		return (execute_command(pipeline->commands[0], 
+		return (execute_command(pipeline->commands[0],
 				STDIN_FILENO, STDOUT_FILENO, shell));
 	if (!prepare_pipeline_resources(pipeline, &pids, &heredoc_fds))
 		return (1);

@@ -40,7 +40,7 @@ int	setup_heredoc(t_command *cmd, t_shell *shell)
 }
 
 /* Handle heredoc fork error */
-int	handle_heredoc_fork_error(int pipe_fd[2], struct sigaction *old_int, 
+int	handle_heredoc_fork_error(int pipe_fd[2], struct sigaction *old_int,
 			struct sigaction *old_quit)
 {
 	perror("fork");
@@ -52,7 +52,7 @@ int	handle_heredoc_fork_error(int pipe_fd[2], struct sigaction *old_int,
 }
 
 /* Handle heredoc parent process */
-int	handle_heredoc_parent(pid_t pid, int pipe_fd[2], 
+int	handle_heredoc_parent(pid_t pid, int pipe_fd[2],
 			struct sigaction *old_int, struct sigaction *old_quit)
 {
 	int	status;
@@ -85,7 +85,8 @@ int	execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
 	if (is_builtin(cmd->args[0]))
 		return (execute_builtin_with_redirects(cmd, in_fd, out_fd, shell));
 	else
-		return (execute_external_command(cmd, in_fd, out_fd, shell, heredoc_fd));
+		return (execute_external_command(cmd, in_fd,
+				out_fd, shell, heredoc_fd));
 }
 
 /* Handle command heredoc */

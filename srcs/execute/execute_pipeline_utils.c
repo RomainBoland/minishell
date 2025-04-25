@@ -39,7 +39,7 @@ int	handle_pipe_iter_error(t_pipeline *pipeline, int i, int in_fd,
 }
 
 /* Close unused pipes in child process */
-void	close_unused_pipes(t_pipeline *pipeline, int i, int active_pipe, 
+void	close_unused_pipes(t_pipeline *pipeline, int i, int active_pipe,
 		int pipefds[2][2])
 {
 	if (i < pipeline->cmd_count - 1)

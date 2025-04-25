@@ -33,10 +33,10 @@ pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell, int i,
 void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
 		int in_fd, int out_fd, int *heredoc_fds)
 {
-	setup_child_process_signals(pipeline->commands[i]);
+	int	j;
 
-	/* Close all unneeded heredoc FDs */
-	int j = 0;
+	setup_child_process_signals(pipeline->commands[i]);
+	j = 0;
 	while (j < pipeline->cmd_count)
 	{
 		if (j != i && heredoc_fds[j] != STDIN_FILENO)
@@ -44,9 +44,7 @@ void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
 		j++;
 	}
 	free(heredoc_fds);
-
 	handle_child_redirections(pipeline, i, in_fd, out_fd, heredoc_fds);
-	/* We need to skip the close_unused_pipes call since we don't have pipe information here */
 	execute_child_process(pipeline, shell, i);
 }
 

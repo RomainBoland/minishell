@@ -13,7 +13,7 @@
 #include "../includes/minishell.h"
 
 /* Save and restore signal handlers for heredoc */
-void	handle_heredoc_signals(struct sigaction *old_int, 
+void	handle_heredoc_signals(struct sigaction *old_int,
 							struct sigaction *old_quit)
 {
 	struct sigaction	sa_int;
@@ -55,8 +55,8 @@ char	*process_heredoc_content(char *delimiter, int quoted, t_shell *shell)
 			free(line);
 			break ;
 		}
-		collected_input = append_heredoc_line(collected_input, line, 
-			quoted, shell);
+		collected_input = append_heredoc_line(collected_input, line,
+				quoted, shell);
 		free(line);
 	}
 	return (collected_input);
@@ -67,13 +67,13 @@ void	process_heredoc_lines(t_command *cmd, int pipe_fd[2], t_shell *shell)
 {
 	int		i;
 	char	*content;
-	
+
 	close(pipe_fd[0]);
 	i = 0;
 	while (i < cmd->heredoc_count)
 	{
-		content = process_heredoc_content(cmd->heredoc_delims[i], 
-			cmd->heredoc_quoted[i], shell);
+		content = process_heredoc_content(cmd->heredoc_delims[i],
+				cmd->heredoc_quoted[i], shell);
 		if (i == cmd->heredoc_count - 1)
 			write(pipe_fd[1], content, ft_strlen(content));
 		free(content);
@@ -84,7 +84,7 @@ void	process_heredoc_lines(t_command *cmd, int pipe_fd[2], t_shell *shell)
 }
 
 /* Append line to heredoc collected input */
-char	*append_heredoc_line(char *collected, char *line, int quoted, 
+char	*append_heredoc_line(char *collected, char *line, int quoted,
 					t_shell *shell)
 {
 	char	*expanded;

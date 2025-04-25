@@ -77,7 +77,7 @@ int	setup_output_redir(t_redirection *redir, int mode)
 }
 
 /* Child process execution */
-void	child_process(t_command *cmd, int in_fd, int out_fd, 
+void	child_process(t_command *cmd, int in_fd, int out_fd,
 			char *exec_path, t_shell *shell)
 {
 	setup_child_process_signals(cmd);

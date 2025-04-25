@@ -24,7 +24,7 @@ int	init_pipeline_pipe(t_pipeline *pipeline, int pipefds[2][2])
 }
 
 /* Setup pipe for next command */
-int	setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2], 
+int	setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2],
 					int active_pipe)
 {
 	if (i < pipeline->cmd_count - 2)
@@ -50,7 +50,10 @@ int	execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
 		return (handle_pipe_error(heredoc_fds, pipeline->cmd_count));
 	while (i < pipeline->cmd_count)
 	{
-		in_fd = (i == 0) ? STDIN_FILENO : pipefds[1 - active_pipe][0];
+		if (i == 0)
+			in_fd = STDIN_FILENO;
+		else
+			in_fd = pipefds[1 - active_pipe][0];
 		if (!execute_pipeline_iter(pipeline, shell, i, &active_pipe,
 				pipefds, in_fd, pids, heredoc_fds))
 			return (1);
@@ -60,8 +63,8 @@ int	execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
 }
 
 /* Single iteration of pipeline execution */
-int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i, 
-		int *active_pipe, int pipefds[2][2], int in_fd, 
+int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i,
+		int *active_pipe, int pipefds[2][2], int in_fd,
 		pid_t *pids, int *heredoc_fds)
 {
 	int	out_fd;
@@ -73,11 +76,11 @@ int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i,
 	{
 		out_fd = pipefds[*active_pipe][1];
 		if (!setup_next_pipe(pipeline, i, pipefds, *active_pipe))
-			return (handle_pipe_iter_error(pipeline, i, in_fd, pipefds, 
-				*active_pipe, heredoc_fds, pids));
+			return (handle_pipe_iter_error(pipeline, i, in_fd, pipefds,
+					*active_pipe, heredoc_fds, pids));
 	}
-	res = execute_pipeline_cmd(pipeline, shell, i, in_fd, out_fd, 
-		*active_pipe, pipefds, pids, heredoc_fds);
+	res = execute_pipeline_cmd(pipeline, shell, i, in_fd, out_fd,
+			*active_pipe, pipefds, pids, heredoc_fds);
 	if (!res)
 		return (0);
 	*active_pipe = 1 - *active_pipe;
@@ -85,8 +88,8 @@ int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i,
 }
 
 /* Execute a single command in the pipeline */
-int	execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell, int i, 
-		int in_fd, int out_fd, int active_pipe, int pipefds[2][2], 
+int	execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell, int i,
+		int in_fd, int out_fd, int active_pipe, int pipefds[2][2],
 		pid_t *pids, int *heredoc_fds)
 {
 	pids[i] = fork();

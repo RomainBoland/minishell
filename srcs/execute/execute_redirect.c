@@ -35,7 +35,7 @@ int	update_input_fd(t_command *cmd, int in_fd, int heredoc_fd)
 }
 
 /* Execute builtin with redirections */
-int	execute_builtin_with_redirects(t_command *cmd, int in_fd, 
+int	execute_builtin_with_redirects(t_command *cmd, int in_fd,
 			int out_fd, t_shell *shell)
 {
 	int	stdin_copy;
@@ -64,7 +64,7 @@ void	restore_std_fds(int stdin_copy, int stdout_copy)
 }
 
 /* Execute external command */
-int	execute_external_command(t_command *cmd, int in_fd, int out_fd, 
+int	execute_external_command(t_command *cmd, int in_fd, int out_fd,
 			t_shell *shell, int heredoc_fd)
 {
 	char	*exec_path;
