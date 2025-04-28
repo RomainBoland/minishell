@@ -27,7 +27,7 @@ char	*get_prompt(void)
 	if (getcwd(cwd, sizeof(cwd)) == NULL)
 		ft_strlcpy(cwd, "~", sizeof(cwd));
 	prompt = malloc(ft_strlen(username) + ft_strlen(hostname)
-		+ ft_strlen(cwd) + 50);
+			+ ft_strlen(cwd) + 50);
 	if (!prompt)
 		return (ft_strdup("minishell$ "));
 	sprintf(prompt, "\033[1;36m%s@%s:%s$\033[0m ", username, hostname, cwd);
@@ -50,20 +50,22 @@ int	ft_strcmp(char *s1, char *s2)
 	return (s1[i] - s2[i]);
 }
 
-int has_unclosed_quotes(char *input)
+int	has_unclosed_quotes(char *input)
 {
-    int i = 0;
-    int in_single_quotes = 0;
-    int in_double_quotes = 0;
-    
-    while (input[i])
-    {
-        if (input[i] == '\'' && !in_double_quotes)
-            in_single_quotes = !in_single_quotes;
-        else if (input[i] == '\"' && !in_single_quotes)
-            in_double_quotes = !in_double_quotes;
-        i++;
-    }
-    
-    return (in_single_quotes || in_double_quotes);
+	int	i;
+	int	in_single_quotes;
+	int	in_double_quotes;
+
+	i = 0;
+	in_single_quotes = 0;
+	in_double_quotes = 0;
+	while (input[i])
+	{
+		if (input[i] == '\'' && !in_double_quotes)
+			in_single_quotes = !in_single_quotes;
+		else if (input[i] == '\"' && !in_single_quotes)
+			in_double_quotes = !in_double_quotes;
+		i++;
+	}
+	return (in_single_quotes || in_double_quotes);
 }

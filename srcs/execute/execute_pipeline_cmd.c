@@ -12,7 +12,6 @@
 
 #include "../includes/minishell.h"
 
-
 /* Setup pipe for next command */
 int	setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2],
 		int active_pipe)
