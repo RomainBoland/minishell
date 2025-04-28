@@ -54,27 +54,29 @@ int	execute_builtin_with_redirects(t_command *cmd, int in_fd,
 	return (status);
 }
 
-/* Restore standard file descriptors */
-void	restore_std_fds(int stdin_copy, int stdout_copy)
+/* Prepare to execute external command */
+static void	prepare_external_cmd(t_command *cmd, int heredoc_fd)
 {
-	dup2(stdin_copy, STDIN_FILENO);
-	dup2(stdout_copy, STDOUT_FILENO);
-	close(stdin_copy);
-	close(stdout_copy);
+	if (cmd->args[0] == NULL)
+	{
+		if (heredoc_fd != STDIN_FILENO)
+			close(heredoc_fd);
+		exit(0);
+	}
 }
 
 /* Execute external command */
-int	execute_external_command(t_command *cmd, int in_fd, int out_fd,
-			t_shell *shell, int heredoc_fd)
+int	execute_external_command(t_command *cmd, t_shell *shell,
+		int fds[2], int heredoc_fd)
 {
-	char	*exec_path;
-	pid_t	pid;
+	char					*exec_path;
+	pid_t					pid;
+	t_child_process_ctx		ctx;
 
 	exec_path = find_executable(cmd->args[0], shell);
 	if (!exec_path)
 	{
-		ft_putstr_fd("minishell: command not found: ", 2);
-		ft_putendl_fd(cmd->args[0], 2);
+		print_cmd_not_found(cmd->args[0]);
 		if (heredoc_fd != STDIN_FILENO)
 			close(heredoc_fd);
 		return (127);
@@ -83,7 +85,11 @@ int	execute_external_command(t_command *cmd, int in_fd, int out_fd,
 	if (pid < 0)
 		return (handle_fork_error(exec_path, heredoc_fd));
 	if (pid == 0)
-		child_process(cmd, in_fd, out_fd, exec_path, shell);
+	{
+		prepare_external_cmd(cmd, heredoc_fd);
+		ctx = init_child_process_ctx(cmd, fds, exec_path, shell);
+		child_process(cmd, &ctx);
+	}
 	return (parent_process(pid, exec_path, cmd, heredoc_fd));
 }
 

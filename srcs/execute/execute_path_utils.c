@@ -23,20 +23,28 @@ void	free_paths(char **paths)
 	free(paths);
 }
 
-/* Execute a pipeline command child process */
+/* Handle pipe creation error */
+int	handle_pipe_error(int *heredoc_fds, int cmd_count)
+{
+	perror("pipe");
+	cleanup_heredocs(heredoc_fds, cmd_count);
+	return (1);
+}
+
+/* Execute pipeline command child process */
 void	execute_pipeline_command_child(t_pipeline *pipeline, t_shell *shell,
-		int i, int *heredoc_fds)
+		int i, t_child_ctx *ctx)
 {
 	t_command	*cmd;
 
 	cmd = pipeline->commands[i];
-	if (cmd->has_heredoc && heredoc_fds[i] != STDIN_FILENO)
+	if (cmd->has_heredoc && ctx->heredoc_fds[i] != STDIN_FILENO)
 	{
-		dup2(heredoc_fds[i], STDIN_FILENO);
-		close(heredoc_fds[i]);
+		dup2(ctx->heredoc_fds[i], STDIN_FILENO);
+		close(ctx->heredoc_fds[i]);
 	}
-	cleanup_heredocs(heredoc_fds, pipeline->cmd_count);
-	free(heredoc_fds);
+	close_other_heredocs(pipeline, i, ctx->heredoc_fds);
+	free(ctx->heredoc_fds);
 	if (!setup_cmd_redirections(cmd))
 		exit(1);
 	execute_command_by_type(cmd, shell);

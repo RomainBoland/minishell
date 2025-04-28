@@ -32,15 +32,6 @@ void	setup_child_process_signals(t_command *cmd)
 	}
 }
 
-/* Close unneeded file descriptors */
-void	close_unneeded_fds(int in_fd, int out_fd)
-{
-	if (in_fd != STDIN_FILENO)
-		close(in_fd);
-	if (out_fd != STDOUT_FILENO)
-		close(out_fd);
-}
-
 /* Execute command in child process */
 void	execute_child_command(t_command *cmd, char *exec_path, t_shell *shell)
 {

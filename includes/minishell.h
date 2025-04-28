@@ -53,53 +53,113 @@ typedef struct s_pipeline t_pipeline;
 typedef struct s_env t_env;
 typedef struct s_shell t_shell;
 typedef struct s_redirection t_redirection;
+typedef struct s_pipeline_iter t_pipeline_iter;
+typedef struct s_init_pipeline t_init_pipeline;
+typedef struct s_pipe_error t_pipe_error;
+typedef struct s_child_ctx t_child_ctx;
+typedef struct s_child_process_ctx t_child_process_ctx;
 
 // Structures
 struct s_token
 {
-    char            *value;
-    int             type;
-    int             quoted_state; // 0 = unquoted, 1 = single quoted, 2 = double quoted
-    struct s_token  *next;
+	char			*value;
+	int				type;
+	int				quoted_state; // 0 = unquoted, 1 = single quoted, 2 = double quoted
+	struct s_token	*next;
 };
 
 struct s_redirection
 {
-    char                    *file;
-    int                     type;  // REDIR_IN, REDIR_OUT, APPEND, HEREDOC
-    int                     quoted;
-    struct s_redirection    *next;
+	char					*file;
+	int						type;  // REDIR_IN, REDIR_OUT, APPEND, HEREDOC
+	int						quoted;
+	struct s_redirection	*next;
 };
 
 struct s_command
 {
-    char			**args;
-    int				*arg_quoted;
-    t_redirection	*redirections;  // Linked list of redirections
-    char			**heredoc_delims;
+	char			**args;
+	int				*arg_quoted;
+	t_redirection	*redirections;  // Linked list of redirections
+	char			**heredoc_delims;
 	int				heredoc_count;
-    int             *heredoc_quoted;
+	int				*heredoc_quoted;
 	int				has_heredoc;
-    t_token         *token;
+	t_token			*token;
 };
 
 struct s_pipeline
 {
-    t_command   **commands;  // Array of commands
-    int         cmd_count;   // Number of commands
+	t_command	**commands;  // Array of commands
+	int			cmd_count;   // Number of commands
 };
 
 struct s_env
 {
-    char            *key;
-    char            *value;
-    struct s_env    *next;
+	char			*key;
+	char			*value;
+	struct s_env	*next;
 };
 
 struct s_shell
 {
-    t_env   *env;            // Environment variables
-    int     last_exit_status; // Exit status of last command
+	t_env	*env;            // Environment variables
+	int		last_exit_status; // Exit status of last command
+};
+
+/* Pipeline iteration data structure */
+struct s_pipeline_iter
+{
+	int			in_fd;
+	int			out_fd;
+	int			pipefds[2][2];
+	int			active_pipe;
+	pid_t		*pids;
+	int			*heredoc_fds;
+	t_pipeline	*pipeline;
+};
+
+/* Pipeline initialization context */
+struct s_init_pipeline
+{
+	t_pipeline	*pipeline;
+	pid_t		*pids;
+	int			*heredoc_fds;
+	int			in_fd;
+	int			active_pipe;
+};
+
+/* Pipeline error context */
+struct s_pipe_error
+{
+	t_pipeline	*pipeline;
+	int			i;
+	int			in_fd;
+	int			*heredoc_fds;
+	pid_t		*pids;
+	int			active_pipe;
+	int			pipefds[2][2];
+};
+
+/* Child redirection context */
+struct s_child_ctx
+{
+	t_pipeline	*pipeline;
+	t_shell		*shell;
+	int			i;
+	int			in_fd;
+	int			out_fd;
+	int			*heredoc_fds;
+};
+
+/* Child process context */
+struct s_child_process_ctx
+{
+	t_command	*cmd;
+	int			in_fd;
+	int			out_fd;
+	char		*exec_path;
+	t_shell		*shell;
 };
 
 /****************************************************************
@@ -172,7 +232,7 @@ t_token	*tokenize_input(char *input);
  ****************************************************************/
 
  /* ---- process.c ---- */
- void	process_input(char *input, t_shell *shell);
+void	process_input(char *input, t_shell *shell);
 
 /* ---- syntax_validation.c ---- */
 int		validate_syntax(t_token *tokens);
@@ -234,9 +294,10 @@ char	*find_exec_in_path(char *path_dir, char *cmd);
 /* ---- execute_path_utils.c ---- */
 void	free_paths(char **paths);
 void	execute_pipeline_command_child(t_pipeline *pipeline, t_shell *shell,
-			int i, int *heredoc_fds);
+			int i, t_child_ctx *ctx);
 void	execute_command_by_type(t_command *cmd, t_shell *shell);
 void	print_cmd_not_found(char *cmd);
+int		handle_pipe_error(int *heredoc_fds, int cmd_count);
 
 /* ---- execute_setup.c ---- */
 void	handle_heredoc_signals(struct sigaction *old_int, 
@@ -261,8 +322,8 @@ int		update_input_fd(t_command *cmd, int in_fd, int heredoc_fd);
 int		execute_builtin_with_redirects(t_command *cmd, int in_fd, 
 			int out_fd, t_shell *shell);
 void	restore_std_fds(int stdin_copy, int stdout_copy);
-int		execute_external_command(t_command *cmd, int in_fd, int out_fd, 
-			t_shell *shell, int heredoc_fd);
+int		execute_external_command(t_command *cmd, t_shell *shell,
+			int fds[2], int heredoc_fd);
 int		setup_redirections(t_command *cmd, int in_fd, int out_fd);
 
 /* ---- execute_process.c ---- */
@@ -270,8 +331,9 @@ int		handle_fork_error(char *exec_path, int heredoc_fd);
 int		setup_cmd_redirections(t_command *cmd);
 int		setup_input_redir(t_redirection *redir);
 int		setup_output_redir(t_redirection *redir, int mode);
-void	child_process(t_command *cmd, int in_fd, int out_fd, 
-			char *exec_path, t_shell *shell);
+void	child_process(t_command *cmd, t_child_process_ctx *ctx);
+t_child_process_ctx	init_child_process_ctx(t_command *cmd,
+				int fds[2], char *exec_path, t_shell *shell);
 
 /* ---- execute_process_utils.c ---- */
 void	setup_child_process_signals(t_command *cmd);
@@ -287,8 +349,6 @@ int		prepare_pipeline_resources(t_pipeline *pipeline, pid_t **pids,
 			int **heredoc_fds);
 int		is_single_builtin(t_pipeline *pipeline);
 int		execute_pipeline(t_pipeline *pipeline, t_shell *shell);
-int		setup_heredocs(t_pipeline *pipeline, t_shell *shell, int *heredoc_fds);
-void	cleanup_heredocs(int *heredoc_fds, int count);
 
 /* ---- execute_pipeline_cmd.c ---- */
 int		init_pipeline_pipe(t_pipeline *pipeline, int pipefds[2][2]);
@@ -297,31 +357,30 @@ int		setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2],
 int		execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
 			pid_t *pids, int *heredoc_fds);
 int		execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i, 
-			int *active_pipe, int pipefds[2][2], int in_fd, 
-			pid_t *pids, int *heredoc_fds);
+			t_pipeline_iter *iter);
 int		execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell, int i, 
-			int in_fd, int out_fd, int active_pipe, int pipefds[2][2], 
-			pid_t *pids, int *heredoc_fds);
+			t_pipeline_iter *iter);
+t_child_ctx	init_child_ctx(t_pipeline *pipeline, t_shell *shell,
+			int i, t_pipeline_iter *iter);
 
 /* ---- execute_pipeline_utils.c ---- */
-int		handle_pipe_error(int *heredoc_fds, int cmd_count);
-int		handle_pipe_iter_error(t_pipeline *pipeline, int i, int in_fd,
-			int pipefds[2][2], int active_pipe, int *heredoc_fds, pid_t *pids);
+int		handle_pipe_iter_error(t_pipeline *pipeline, int i,
+			t_pipeline_iter *iter);
 void	close_unused_pipes(t_pipeline *pipeline, int i, int active_pipe, 
 			int pipefds[2][2]);
 void	setup_pipe_redirects(int in_fd, int out_fd);
-void	handle_parent_pipes_fixed(int i, int in_fd, int active_pipe,
-			int pipefds[2][2], t_pipeline *pipeline);
+void	handle_parent_pipes(int i, t_pipeline_iter *iter);
 
 /* ---- execute_pipeline_process.c ---- */
 pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell, int i,
-			int in_fd, int out_fd, int *heredoc_fds);
+			t_pipeline_iter *iter);
 void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
-			int in_fd, int out_fd, int *heredoc_fds);
+			t_child_ctx *ctx);
 void	handle_child_redirections(t_pipeline *pipeline, int i, int in_fd,
-			int out_fd, int *heredoc_fds);
+			int out_fd);
 int		handle_input_redirections(t_command *cmd);
-void	setup_command_input(int i, int in_fd, int *heredoc_fds);
+void	setup_command_input(int i, int in_fd, t_pipeline *pipeline);
+void	close_other_heredocs(t_pipeline *pipeline, int i, int *heredoc_fds);
 
 /* ---- execute_pipeline_process2.c ---- */
 int		process_out_redir(t_redirection *redir);
@@ -332,5 +391,9 @@ void	wait_for_processes(pid_t *pids, int count);
 
 /* ---- execute_pipeline_wait.c ---- */
 int		wait_for_pipeline(pid_t *pids, int cmd_count);
+
+/* ---- r ---- */
+void	cleanup_heredocs(int *heredoc_fds, int count); //pipeline_utils
+int		setup_heredocs(t_pipeline *pipeline, t_shell *shell, int *heredoc_fds); //pipeline_utils
 
 #endif

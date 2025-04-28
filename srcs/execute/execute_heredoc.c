@@ -70,36 +70,3 @@ int	handle_heredoc_parent(pid_t pid, int pipe_fd[2],
 	}
 	return (pipe_fd[0]);
 }
-
-/* Execute a command */
-int	execute_command(t_command *cmd, int in_fd, int out_fd, t_shell *shell)
-{
-	int		heredoc_fd;
-
-	if (!cmd || !cmd->args || !cmd->args[0])
-		return (0);
-	heredoc_fd = handle_command_heredoc(cmd, shell);
-	if (heredoc_fd < 0)
-		return (1);
-	in_fd = update_input_fd(cmd, in_fd, heredoc_fd);
-	if (is_builtin(cmd->args[0]))
-		return (execute_builtin_with_redirects(cmd, in_fd, out_fd, shell));
-	else
-		return (execute_external_command(cmd, in_fd,
-				out_fd, shell, heredoc_fd));
-}
-
-/* Handle command heredoc */
-int	handle_command_heredoc(t_command *cmd, t_shell *shell)
-{
-	int	heredoc_fd;
-
-	heredoc_fd = STDIN_FILENO;
-	if (cmd->has_heredoc)
-	{
-		heredoc_fd = setup_heredoc(cmd, shell);
-		if (heredoc_fd < 0)
-			return (-1);
-	}
-	return (heredoc_fd);
-}

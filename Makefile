@@ -38,8 +38,12 @@ SRCS = $(SRC_DIR)/minishell.c \
 	   $(SRC_DIR)/execute/execute_pipeline_process2.c \
 	   $(SRC_DIR)/execute/execute_pipeline_wait.c \
 	   $(SRC_DIR)/execute/execute_path_utils.c \
-	   $(SRC_DIR)/execute/execute_pipeline_cmd.c
-
+	   $(SRC_DIR)/execute/execute_pipeline_cmd.c \
+	   $(SRC_DIR)/execute/execute_command.c \
+	   $(SRC_DIR)/execute/execute_pipeline_cmd_utils.c \
+	   $(SRC_DIR)/execute/execute_error.c \
+	   $(SRC_DIR)/execute/execute_heredoc_signal.c \
+	   $(SRC_DIR)/execute/execute_pipeline_redirect.c
 
 OBJS = $(SRCS:$(SRC_DIR)/%.c=$(OBJ_DIR)/%.o)
 LIBFT = $(LIBFT_DIR)/libft.a

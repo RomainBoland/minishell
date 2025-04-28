@@ -14,7 +14,7 @@
 
 /* Prepare pipeline resources */
 int	prepare_pipeline_resources(t_pipeline *pipeline, pid_t **pids,
-							int **heredoc_fds)
+		int **heredoc_fds)
 {
 	*pids = malloc(sizeof(pid_t) * pipeline->cmd_count);
 	*heredoc_fds = malloc(sizeof(int) * pipeline->cmd_count);
@@ -60,40 +60,45 @@ int	execute_pipeline(t_pipeline *pipeline, t_shell *shell)
 	return (exit_status);
 }
 
-/* Setup heredocs for all commands in pipeline */
-int	setup_heredocs(t_pipeline *pipeline, t_shell *shell, int *heredoc_fds)
+/* Initialize pipeline iteration */
+static t_pipeline_iter	init_pipeline_iteration(t_init_pipeline *init_ctx)
 {
-	int	i;
+	t_pipeline_iter	iter;
 
-	i = 0;
-	while (i < pipeline->cmd_count)
-	{
-		if (pipeline->commands[i]->has_heredoc)
-		{
-			heredoc_fds[i] = setup_heredoc(pipeline->commands[i], shell);
-			if (heredoc_fds[i] < 0)
-			{
-				cleanup_heredocs(heredoc_fds, i);
-				return (0);
-			}
-		}
-		else
-			heredoc_fds[i] = STDIN_FILENO;
-		i++;
-	}
-	return (1);
+	iter.in_fd = init_ctx->in_fd;
+	iter.active_pipe = init_ctx->active_pipe;
+	iter.pids = init_ctx->pids;
+	iter.heredoc_fds = init_ctx->heredoc_fds;
+	iter.pipeline = init_ctx->pipeline;
+	return (iter);
 }
 
-/* Cleanup heredocs on error */
-void	cleanup_heredocs(int *heredoc_fds, int count)
+/* Execute pipeline commands loop */
+int	execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
+		pid_t *pids, int *heredoc_fds)
 {
-	int	i;
+	int				i;
+	t_pipeline_iter	iter;
+	t_init_pipeline	init_ctx;
 
 	i = 0;
-	while (i < count)
+	init_ctx.pipeline = pipeline;
+	init_ctx.in_fd = STDIN_FILENO;
+	init_ctx.active_pipe = 0;
+	init_ctx.pids = pids;
+	init_ctx.heredoc_fds = heredoc_fds;
+	iter = init_pipeline_iteration(&init_ctx);
+	if (!init_pipeline_pipe(pipeline, iter.pipefds))
+		return (handle_pipe_error(heredoc_fds, pipeline->cmd_count));
+	while (i < pipeline->cmd_count)
 	{
-		if (heredoc_fds[i] != STDIN_FILENO)
-			close(heredoc_fds[i]);
+		if (i == 0)
+			iter.in_fd = STDIN_FILENO;
+		else
+			iter.in_fd = iter.pipefds[1 - iter.active_pipe][0];
+		if (!execute_pipeline_iter(pipeline, shell, i, &iter))
+			return (1);
 		i++;
 	}
+	return (wait_for_pipeline(pids, pipeline->cmd_count));
 }

@@ -12,68 +12,40 @@
 
 #include "../includes/minishell.h"
 
-/* Handle pipe creation error */
-int	handle_pipe_error(int *heredoc_fds, int cmd_count)
+/* Setup heredocs for all commands in pipeline */
+int	setup_heredocs(t_pipeline *pipeline, t_shell *shell, int *heredoc_fds)
 {
-	perror("pipe");
-	cleanup_heredocs(heredoc_fds, cmd_count);
+	int	i;
+
+	i = 0;
+	while (i < pipeline->cmd_count)
+	{
+		if (pipeline->commands[i]->has_heredoc)
+		{
+			heredoc_fds[i] = setup_heredoc(pipeline->commands[i], shell);
+			if (heredoc_fds[i] < 0)
+			{
+				cleanup_heredocs(heredoc_fds, i);
+				return (0);
+			}
+		}
+		else
+			heredoc_fds[i] = STDIN_FILENO;
+		i++;
+	}
 	return (1);
 }
 
-/* Handle error in pipe iteration */
-int	handle_pipe_iter_error(t_pipeline *pipeline, int i, int in_fd,
-		int pipefds[2][2], int active_pipe, int *heredoc_fds, pid_t *pids)
+/* Cleanup heredocs on error */
+void	cleanup_heredocs(int *heredoc_fds, int count)
 {
-	handle_pipe_error(heredoc_fds, pipeline->cmd_count);
-	if (i > 0)
-		close(in_fd);
-	close(pipefds[active_pipe][0]);
-	close(pipefds[active_pipe][1]);
-	if (i < pipeline->cmd_count - 2)
-	{
-		close(pipefds[1 - active_pipe][0]);
-		close(pipefds[1 - active_pipe][1]);
-	}
-	wait_for_processes(pids, i);
-	return (0);
-}
+	int	i;
 
-/* Close unused pipes in child process */
-void	close_unused_pipes(t_pipeline *pipeline, int i, int active_pipe,
-		int pipefds[2][2])
-{
-	if (i < pipeline->cmd_count - 1)
-		close(pipefds[active_pipe][0]);
-	if (i < pipeline->cmd_count - 2)
+	i = 0;
+	while (i < count)
 	{
-		close(pipefds[1 - active_pipe][0]);
-		close(pipefds[1 - active_pipe][1]);
+		if (heredoc_fds[i] != STDIN_FILENO)
+			close(heredoc_fds[i]);
+		i++;
 	}
-	if (i > 0)
-		close(pipefds[1 - active_pipe][1]);
-}
-
-/* Setup input/output redirections for pipeline command */
-void	setup_pipe_redirects(int in_fd, int out_fd)
-{
-	if (in_fd != STDIN_FILENO)
-	{
-		dup2(in_fd, STDIN_FILENO);
-		close(in_fd);
-	}
-	if (out_fd != STDOUT_FILENO)
-	{
-		dup2(out_fd, STDOUT_FILENO);
-		close(out_fd);
-	}
-}
-
-/* Handle parent process pipes with improved logic */
-void	handle_parent_pipes_fixed(int i, int in_fd, int active_pipe,
-		int pipefds[2][2], t_pipeline *pipeline)
-{
-	if (i > 0)
-		close(in_fd);
-	if (i < pipeline->cmd_count - 1)
-		close(pipefds[active_pipe][1]);
 }

@@ -12,16 +12,6 @@
 
 #include "../includes/minishell.h"
 
-/* Handle fork error */
-int	handle_fork_error(char *exec_path, int heredoc_fd)
-{
-	perror("fork");
-	free(exec_path);
-	if (heredoc_fd != STDIN_FILENO)
-		close(heredoc_fd);
-	return (1);
-}
-
 /* Process redirections for command */
 int	setup_cmd_redirections(t_command *cmd)
 {
@@ -76,16 +66,29 @@ int	setup_output_redir(t_redirection *redir, int mode)
 	return (fd);
 }
 
+/* Initialize child process context */
+t_child_process_ctx	init_child_process_ctx(t_command *cmd,
+							int fds[2], char *exec_path, t_shell *shell)
+{
+	t_child_process_ctx	ctx;
+
+	ctx.cmd = cmd;
+	ctx.in_fd = fds[0];
+	ctx.out_fd = fds[1];
+	ctx.exec_path = exec_path;
+	ctx.shell = shell;
+	return (ctx);
+}
+
 /* Child process execution */
-void	child_process(t_command *cmd, int in_fd, int out_fd,
-			char *exec_path, t_shell *shell)
+void	child_process(t_command *cmd, t_child_process_ctx *ctx)
 {
 	setup_child_process_signals(cmd);
-	if (!setup_redirections(cmd, in_fd, out_fd))
+	if (!setup_redirections(cmd, ctx->in_fd, ctx->out_fd))
 	{
-		free(exec_path);
+		free(ctx->exec_path);
 		exit(1);
 	}
-	close_unneeded_fds(in_fd, out_fd);
-	execute_child_command(cmd, exec_path, shell);
+	close_unneeded_fds(ctx->in_fd, ctx->out_fd);
+	execute_child_command(cmd, ctx->exec_path, ctx->shell);
 }

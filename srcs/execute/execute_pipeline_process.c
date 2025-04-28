@@ -13,10 +13,11 @@
 #include "../includes/minishell.h"
 
 /* Create process for a command in pipeline */
-pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell, int i,
-		int in_fd, int out_fd, int *heredoc_fds)
+pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell,
+		int i, t_pipeline_iter *iter)
 {
-	pid_t	pid;
+	pid_t		pid;
+	t_child_ctx	child_ctx;
 
 	pid = fork();
 	if (pid < 0)
@@ -25,17 +26,18 @@ pid_t	create_command_process(t_pipeline *pipeline, t_shell *shell, int i,
 		return (-1);
 	}
 	if (pid == 0)
-		execute_pipeline_child(pipeline, shell, i, in_fd, out_fd, heredoc_fds);
+	{
+		child_ctx = init_child_ctx(pipeline, shell, i, iter);
+		execute_pipeline_child(pipeline, shell, i, &child_ctx);
+	}
 	return (pid);
 }
 
-/* Execute command in child process */
-void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
-		int in_fd, int out_fd, int *heredoc_fds)
+/* Close other heredocs in child process */
+void	close_other_heredocs(t_pipeline *pipeline, int i, int *heredoc_fds)
 {
 	int	j;
 
-	setup_child_process_signals(pipeline->commands[i]);
 	j = 0;
 	while (j < pipeline->cmd_count)
 	{
@@ -43,60 +45,43 @@ void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell, int i,
 			close(heredoc_fds[j]);
 		j++;
 	}
-	free(heredoc_fds);
-	handle_child_redirections(pipeline, i, in_fd, out_fd, heredoc_fds);
+}
+
+/* Execute command in child process */
+void	execute_pipeline_child(t_pipeline *pipeline, t_shell *shell,
+		int i, t_child_ctx *ctx)
+{
+	setup_child_process_signals(pipeline->commands[i]);
+	close_other_heredocs(pipeline, i, ctx->heredoc_fds);
+	free(ctx->heredoc_fds);
+	handle_child_redirections(pipeline, i, ctx->in_fd, ctx->out_fd);
 	execute_child_process(pipeline, shell, i);
 }
 
 /* Handle child process redirections */
-void	handle_child_redirections(t_pipeline *pipeline, int i, int in_fd,
-		int out_fd, int *heredoc_fds)
+void	handle_child_redirections(t_pipeline *pipeline, int i,
+		int in_fd, int out_fd)
 {
 	int				input_redirected;
 
 	input_redirected = handle_input_redirections(pipeline->commands[i]);
 	if (!input_redirected)
-		setup_command_input(i, in_fd, heredoc_fds);
+		setup_command_input(i, in_fd, pipeline);
 	handle_output_redirections(pipeline->commands[i], out_fd);
 }
 
-/* Handle input redirections */
-int	handle_input_redirections(t_command *cmd)
-{
-	t_redirection	*redir;
-	int				fd;
-
-	redir = cmd->redirections;
-	while (redir)
-	{
-		if (redir->type == TOKEN_REDIR_IN)
-		{
-			fd = open(redir->file, O_RDONLY);
-			if (fd < 0)
-			{
-				perror(redir->file);
-				exit(1);
-			}
-			dup2(fd, STDIN_FILENO);
-			close(fd);
-			return (1);
-		}
-		redir = redir->next;
-	}
-	return (0);
-}
-
 /* Setup command input */
-void	setup_command_input(int i, int in_fd, int *heredoc_fds)
+void	setup_command_input(int i, int in_fd, t_pipeline *pipeline)
 {
 	if (i > 0)
 	{
 		dup2(in_fd, STDIN_FILENO);
 		close(in_fd);
 	}
-	else if (heredoc_fds[i] != STDIN_FILENO)
+	else if (pipeline->commands[i]->heredoc_count > 0
+		&& pipeline->commands[i]->has_heredoc)
 	{
-		dup2(heredoc_fds[i], STDIN_FILENO);
-		close(heredoc_fds[i]);
+		dup2(in_fd, STDIN_FILENO);
+		close(in_fd);
 	}
 }

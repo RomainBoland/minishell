@@ -12,20 +12,10 @@
 
 #include "../includes/minishell.h"
 
-/* Initialize pipe for pipeline execution */
-int	init_pipeline_pipe(t_pipeline *pipeline, int pipefds[2][2])
-{
-	if (pipeline->cmd_count > 1)
-	{
-		if (pipe(pipefds[0]) < 0)
-			return (0);
-	}
-	return (1);
-}
 
 /* Setup pipe for next command */
 int	setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2],
-					int active_pipe)
+		int active_pipe)
 {
 	if (i < pipeline->cmd_count - 2)
 	{
@@ -35,75 +25,67 @@ int	setup_next_pipe(t_pipeline *pipeline, int i, int pipefds[2][2],
 	return (1);
 }
 
-/* Execute pipeline commands loop */
-int	execute_pipeline_commands(t_pipeline *pipeline, t_shell *shell,
-		pid_t *pids, int *heredoc_fds)
+/* Set output file descriptor for pipeline command */
+static int	set_command_output(t_pipeline *pipeline, int i, int active_pipe,
+				int pipefds[2][2])
 {
-	int	i;
-	int	in_fd;
-	int	pipefds[2][2];
-	int	active_pipe;
+	if (i == pipeline->cmd_count - 1)
+		return (STDOUT_FILENO);
+	else
+		return (pipefds[active_pipe][1]);
+}
 
-	i = 0;
-	active_pipe = 0;
-	if (!init_pipeline_pipe(pipeline, pipefds))
-		return (handle_pipe_error(heredoc_fds, pipeline->cmd_count));
-	while (i < pipeline->cmd_count)
+/* Create error context */
+static t_pipe_error	create_error_context(t_pipeline *pipeline, int i,
+					t_pipeline_iter *iter)
+{
+	t_pipe_error	ctx;
+
+	ctx.pipeline = pipeline;
+	ctx.i = i;
+	ctx.in_fd = iter->in_fd;
+	ctx.heredoc_fds = iter->heredoc_fds;
+	ctx.pids = iter->pids;
+	ctx.active_pipe = iter->active_pipe;
+	ft_memcpy(ctx.pipefds, iter->pipefds, sizeof(iter->pipefds));
+	return (ctx);
+}
+
+/* Handle error in pipe iteration */
+int	handle_pipe_iter_error(t_pipeline *pipeline, int i,
+		t_pipeline_iter *iter)
+{
+	t_pipe_error	ctx;
+
+	ctx = create_error_context(pipeline, i, iter);
+	handle_pipe_error(ctx.heredoc_fds, ctx.pipeline->cmd_count);
+	if (ctx.i > 0)
+		close(ctx.in_fd);
+	close(ctx.pipefds[ctx.active_pipe][0]);
+	close(ctx.pipefds[ctx.active_pipe][1]);
+	if (ctx.i < ctx.pipeline->cmd_count - 2)
 	{
-		if (i == 0)
-			in_fd = STDIN_FILENO;
-		else
-			in_fd = pipefds[1 - active_pipe][0];
-		if (!execute_pipeline_iter(pipeline, shell, i, &active_pipe,
-				pipefds, in_fd, pids, heredoc_fds))
-			return (1);
-		i++;
+		close(ctx.pipefds[1 - ctx.active_pipe][0]);
+		close(ctx.pipefds[1 - ctx.active_pipe][1]);
 	}
-	return (wait_for_pipeline(pids, pipeline->cmd_count));
+	wait_for_processes(ctx.pids, ctx.i);
+	return (0);
 }
 
 /* Single iteration of pipeline execution */
-int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell, int i,
-		int *active_pipe, int pipefds[2][2], int in_fd,
-		pid_t *pids, int *heredoc_fds)
+int	execute_pipeline_iter(t_pipeline *pipeline, t_shell *shell,
+	int i, t_pipeline_iter *iter)
 {
-	int	out_fd;
-	int	res;
+	int	result;
 
-	if (i == pipeline->cmd_count - 1)
-		out_fd = STDOUT_FILENO;
-	else
-	{
-		out_fd = pipefds[*active_pipe][1];
-		if (!setup_next_pipe(pipeline, i, pipefds, *active_pipe))
-			return (handle_pipe_iter_error(pipeline, i, in_fd, pipefds,
-					*active_pipe, heredoc_fds, pids));
-	}
-	res = execute_pipeline_cmd(pipeline, shell, i, in_fd, out_fd,
-			*active_pipe, pipefds, pids, heredoc_fds);
-	if (!res)
+	iter->out_fd = set_command_output(pipeline, i, iter->active_pipe,
+			iter->pipefds);
+	if (i < pipeline->cmd_count - 1 && !setup_next_pipe(pipeline, i,
+			iter->pipefds, iter->active_pipe))
+		return (handle_pipe_iter_error(pipeline, i, iter));
+	result = execute_pipeline_cmd(pipeline, shell, i, iter);
+	if (!result)
 		return (0);
-	*active_pipe = 1 - *active_pipe;
-	return (1);
-}
-
-/* Execute a single command in the pipeline */
-int	execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell, int i,
-		int in_fd, int out_fd, int active_pipe, int pipefds[2][2],
-		pid_t *pids, int *heredoc_fds)
-{
-	pids[i] = fork();
-	if (pids[i] < 0)
-	{
-		perror("fork");
-		return (0);
-	}
-	if (pids[i] == 0)
-	{
-		close_unused_pipes(pipeline, i, active_pipe, pipefds);
-		setup_pipe_redirects(in_fd, out_fd);
-		execute_pipeline_command_child(pipeline, shell, i, heredoc_fds);
-	}
-	handle_parent_pipes_fixed(i, in_fd, active_pipe, pipefds, pipeline);
+	iter->active_pipe = 1 - iter->active_pipe;
 	return (1);
 }
