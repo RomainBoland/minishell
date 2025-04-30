@@ -61,28 +61,58 @@ int					has_unclosed_quotes(char *input);
  ****************************************************************/
 
 /* ---- environment.c ---- */
-t_env				*init_env(char **envp);
-void				free_env(t_env *env);
-char				*get_env_value(t_env *env, char *key);
-void				set_env_value(t_env *env, char *key, char *value);
-void				remove_env_var(t_env *env, char *key);
-char				**env_to_array(t_env *env);
-void				free_env_array(char **env_array);
-int					has_env_key(t_env *env, char *key);
-char				**env_to_array_export(t_env *env);
+t_env   	*init_env(char **envp);
+void    	free_env(t_env *env);
+char    	*get_env_value(t_env *env, char *key);
+void    	set_env_value(t_env *env, char *key, char *value);
+void    	remove_env_var(t_env *env, char *key);
+char    	**env_to_array(t_env *env);
+char        **env_to_array_export(t_env *env);
+int         has_env_key(t_env *env, char *key);
+void    	free_env_array(char **env_array);
+t_env   	*create_env_node(char *key, char *value);
+void	add_env_node(t_env **env_list, t_env **current, t_env *new_node);
+int	check_special_env_var(char *entry, char *var_name, int name_len);
+void	process_env_entry(char *entry, t_env **env_list, t_env **current);
+int	count_env_vars(t_env *env);
+char	*create_env_array_entry(char *key, char *value);
+void	cleanup_env_array(char **env_array, int index);
+int	count_export_vars(t_env *env);
+int	should_skip_env_var(t_env *current);
 
 /****************************************************************
  * 							BUILTIN								*
  ****************************************************************/
 
-/* ---- builtin.c ---- */
-int					ft_echo(t_command *cmd);
-int					ft_cd(t_command *cmd, t_shell *shell);
-int					ft_pwd(void);
-int					ft_export(t_command *cmd, t_shell *shell);
-int					ft_unset(t_command *cmd, t_shell *shell);
-int					ft_env(t_shell *shell);
-int					ft_exit(t_command *cmd, t_shell *shell);
+ int     	ft_echo(t_command *cmd);
+
+ // for cd
+ int	        error_cd(char *str);
+ int     	ft_cd(t_command *cmd, t_shell *shell);
+ int         update_old_pwd(char *old_pwd, t_shell *shell);
+ void	    handle_pwd_failure(char *path, char *old_pwd, t_shell *shell);
+ void	    free_array(char **array);
+ int	        count_array_elements(char **array);
+ void	    process_path_components(char **components, char ***result, int *result_size);
+ char	    **allocate_result_array(int size);
+ char        *set_path(t_command *cmd, t_shell *shell);
+ char	    *process_relative_path(char *old_pwd, char *path);
+ 
+ 
+ int    		ft_pwd(void);
+ 
+ // for export
+ int     	ft_export(t_command *cmd, t_shell *shell);
+ 
+ 
+ int	        handle_no_args(t_shell *shell);
+ int	        handle_append(t_shell *shell, char *arg);
+ void	    handle_assignment(t_shell *shell, char *arg);
+ 
+ 
+ int     	ft_unset(t_command *cmd, t_shell *shell);
+ int     	ft_env(t_shell *shell);
+ int     	ft_exit(t_command *cmd, t_shell *shell);
 
 /****************************************************************
  * 							TOKENIZER							*
@@ -135,9 +165,16 @@ int					handle_missing_word_error(t_token *current);
  * 							PARSER								*
  ****************************************************************/
 
-/* ---- parser.c ---- */
-t_pipeline			*parse_tokens(t_token *tokens);
-void				free_pipeline(t_pipeline *pipeline);
+void			add_arg(t_command *cmd, char *arg, int quoted_state);
+void			add_redirection(t_command *cmd, char *file, int type, int quoted_state);
+void			free_command(t_command *cmd);
+void			free_pipeline(t_pipeline *pipeline);
+int				count_commands(t_token *tokens);
+t_command		*create_command(t_token *tokens);
+t_token 		*tokenize_input(char *input);
+void			free_tokens(t_token *tokens);
+t_pipeline 		*parse_tokens(t_token *tokens);
+void    		free_pipeline(t_pipeline *pipeline);
 
 /****************************************************************
  * 							EXPAND								*
