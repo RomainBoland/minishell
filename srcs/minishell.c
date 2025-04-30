@@ -44,6 +44,7 @@ static void	command_loop(t_shell *shell)
 		input = readline(prompt);
 		if (!input)
 		{
+			write(STDOUT_FILENO, "\n", 1);
 			write(STDOUT_FILENO, "exit\n", 5);
 			free(prompt);
 			break ;
