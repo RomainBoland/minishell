@@ -80,7 +80,10 @@ char	*append_heredoc_line(char *collected, char *line,
 
 	expanded = expand_heredoc_line(line, quoted, shell);
 	if (!expanded)
+	{
+		free(collected);
 		return (NULL);
+	}
 	temp = collected;
 	result = ft_strjoin(collected, expanded);
 	free(temp);

@@ -13,25 +13,31 @@
 #include "../includes/minishell.h"
 
 /* Process redirections for command */
-int	setup_cmd_redirections(t_command *cmd)
+int    setup_cmd_redirections(t_command *cmd)
 {
-	t_redirection	*redir;
-	int				fd;
+    t_redirection    *redir;
+    int                fd;
 
-	redir = cmd->redirections;
-	while (redir)
-	{
-		if (redir->type == TOKEN_REDIR_IN)
-			fd = setup_input_redir(redir);
-		else if (redir->type == TOKEN_REDIR_OUT)
-			fd = setup_output_redir(redir, O_TRUNC);
-		else if (redir->type == TOKEN_APPEND)
-			fd = setup_output_redir(redir, O_APPEND);
-		if (fd < 0)
-			return (0);
-		redir = redir->next;
-	}
-	return (1);
+    redir = cmd->redirections;
+    while (redir)
+    {
+        fd = 0;
+        if (redir->type == TOKEN_REDIR_IN)
+            fd = setup_input_redir(redir);
+        else if (redir->type == TOKEN_REDIR_OUT)
+            fd = setup_output_redir(redir, O_TRUNC);
+        else if (redir->type == TOKEN_APPEND)
+            fd = setup_output_redir(redir, O_APPEND);
+        if (redir->type == TOKEN_REDIR_IN
+            || redir->type == TOKEN_REDIR_OUT
+            || redir->type == TOKEN_APPEND)
+        {
+            if (fd < 0)
+                return (0);
+        }
+        redir = redir->next;
+    }
+    return (1);
 }
 
 /* Setup input redirection */
