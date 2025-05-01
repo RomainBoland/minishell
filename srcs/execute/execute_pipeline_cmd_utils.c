@@ -27,40 +27,6 @@ t_child_ctx	init_child_ctx(t_pipeline *pipeline, t_shell *shell,
 	return (ctx);
 }
 
-/* Initialize pipe for pipeline execution */
-int	init_pipeline_pipe(t_pipeline *pipeline, int pipefds[2][2])
-{
-	if (pipeline->cmd_count > 1)
-	{
-		if (pipe(pipefds[0]) < 0)
-			return (0);
-	}
-	return (1);
-}
-
-/* Execute a single command in the pipeline */
-int	execute_pipeline_cmd(t_pipeline *pipeline, t_shell *shell,
-	int i, t_pipeline_iter *iter)
-{
-	t_child_ctx	child_ctx;
-
-	iter->pids[i] = fork();
-	if (iter->pids[i] < 0)
-	{
-		perror("fork");
-		return (0);
-	}
-	if (iter->pids[i] == 0)
-	{
-		close_unused_pipes(pipeline, i, iter->active_pipe, iter->pipefds);
-		setup_pipe_redirects(iter->in_fd, iter->out_fd);
-		child_ctx = init_child_ctx(pipeline, shell, i, iter);
-		execute_pipeline_command_child(pipeline, shell, i, &child_ctx);
-	}
-	handle_parent_pipes(i, iter);
-	return (1);
-}
-
 /* Handle parent process pipes */
 void	handle_parent_pipes(int i, t_pipeline_iter *iter)
 {
