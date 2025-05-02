@@ -1,4 +1,4 @@
-markdown# Minishell
+# Minishell
 
 A simple shell implementation based on bash, developed as part of the 42 School curriculum.
 
