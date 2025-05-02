@@ -125,9 +125,6 @@ echo $USER
 export MY_VAR=value
 echo $MY_VAR
 
-# Command sequence
-mkdir test_dir && cd test_dir && pwd
-
 # Background process
 sleep 10 &
 ```
